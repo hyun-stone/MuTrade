@@ -58,9 +58,9 @@ Plans:
   2. A SELL_PENDING flag is set for a symbol immediately after order submission; a second sell signal for the same symbol before fill confirmation does not submit a second order
   3. After order submission, the bot confirms fill status and logs the result (filled quantity and execution price)
   4. End-to-end sell flow completes successfully in KIS paper trading (모의투자) with paper trading `tr_id` values
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 03-01-PLAN.md — TDD: OrderExecutor 핵심 로직 (시장가 매도, 수량 조회, SELL_PENDING, 체결 확인)
+- [x] 03-01-PLAN.md — TDD: OrderExecutor 핵심 로직 (시장가 매도, 수량 조회, SELL_PENDING, 체결 확인)
 - [ ] 03-02-PLAN.md — OrderExecutor 통합 (scheduler 연결, main.py 와이어링)
 
 ### Phase 4: Notifications and Operational Polish
@@ -85,7 +85,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Foundation and KIS API Connectivity | 2/2 | Complete | 2026-04-06 |
 | 2. Trailing Stop Engine | 2/2 | Complete   | 2026-04-06 |
-| 3. Order Execution | 0/2 | Planned | - |
+| 3. Order Execution | 1/2 | In Progress|  |
 | 4. Notifications and Operational Polish | 0/? | Not started | - |
 
 ---

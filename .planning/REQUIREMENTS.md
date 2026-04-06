@@ -29,10 +29,10 @@
 
 ### 매도 주문 실행 (EXEC)
 
-- [ ] **EXEC-01**: 매도 신호 발생 시 해당 종목을 시장가로 즉시 매도한다
-- [ ] **EXEC-02**: 매도 가능 수량(ord_psbl_qty)을 조회하여 매도 수량으로 사용한다
-- [ ] **EXEC-03**: 동일 종목에 대해 SELL_PENDING 플래그로 중복 주문을 방지한다
-- [ ] **EXEC-04**: 주문 제출 후 체결 여부를 확인한다
+- [x] **EXEC-01**: 매도 신호 발생 시 해당 종목을 시장가로 즉시 매도한다
+- [x] **EXEC-02**: 매도 가능 수량(ord_psbl_qty)을 조회하여 매도 수량으로 사용한다
+- [x] **EXEC-03**: 동일 종목에 대해 SELL_PENDING 플래그로 중복 주문을 방지한다
+- [x] **EXEC-04**: 주문 제출 후 체결 여부를 확인한다
 
 ### 알림 및 로그 (NOTIF)
 
@@ -92,10 +92,10 @@
 | ENG-03 | Phase 2 | Complete |
 | ENG-04 | Phase 2 | Complete |
 | ENG-05 | Phase 2 | Complete |
-| EXEC-01 | Phase 3 | Pending |
-| EXEC-02 | Phase 3 | Pending |
-| EXEC-03 | Phase 3 | Pending |
-| EXEC-04 | Phase 3 | Pending |
+| EXEC-01 | Phase 3 | Complete |
+| EXEC-02 | Phase 3 | Complete |
+| EXEC-03 | Phase 3 | Complete |
+| EXEC-04 | Phase 3 | Complete |
 | NOTIF-01 | Phase 4 | Pending |
 | NOTIF-02 | Phase 4 | Pending |
 | NOTIF-03 | Phase 4 | Pending |
