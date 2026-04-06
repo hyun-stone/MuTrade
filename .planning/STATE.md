@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 01-02-PLAN.md (KIS client, price feed, scheduler, main.py)
-last_updated: "2026-04-06T15:29:53.163Z"
+status: executing
+stopped_at: Completed 02-01-PLAN.md (trailing stop engine core — TDD)
+last_updated: "2026-04-06T15:57:57.252Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** 조건 충족 시 사람의 개입 없이 즉시 자동 매도하여 손실을 방어한다.
-**Current focus:** Phase 01 — foundation-and-kis-api-connectivity
+**Current focus:** Phase 02 — trailing-stop-engine
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 02 (trailing-stop-engine) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-06
 
 Progress: [░░░░░░░░░░] 0%
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01-foundation-and-kis-api-connectivity P01 | 5 | 2 tasks | 15 files |
 | Phase 01-foundation-and-kis-api-connectivity P02 | 4 | 2 tasks | 7 files |
+| Phase 02-trailing-stop-engine P01 | 3 | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Recent decisions affecting current work:
 - [Phase 01-foundation-and-kis-api-connectivity]: exchange_calendars XKRX로 KRX 공휴일 오프라인 판정 채택 — httpx+KIS API보다 신뢰성 높음
 - [Phase 01-foundation-and-kis-api-connectivity]: PyKis 2.1.6 가상계좌: virtual=True 없음, virtual_id/virtual_appkey/virtual_secretkey kwargs로 활성화
 - [Phase 01-foundation-and-kis-api-connectivity]: KisAPIError 로깅: getattr(e, 'rt_cd', None) 패턴으로 mock과 실제 객체 모두 안전하게 처리
+- [Phase 02-trailing-stop-engine]: warm=False guard: 첫 tick에서는 SellSignal 없음 — 재시작 직후 오탐 방지
+- [Phase 02-trailing-stop-engine]: peak_updated 플래그: 고점 갱신 시에만 StateStore.save() 호출 — 매 tick I/O 없음
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T15:24:38.537Z
-Stopped at: Completed 01-02-PLAN.md (KIS client, price feed, scheduler, main.py)
+Last session: 2026-04-06T15:57:57.250Z
+Stopped at: Completed 02-01-PLAN.md (trailing stop engine core — TDD)
 Resume file: None

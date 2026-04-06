@@ -21,11 +21,11 @@
 
 ### 트레일링 스탑 엔진 (ENG)
 
-- [ ] **ENG-01**: 시스템이 각 종목의 고점(최고가)을 자동으로 추적한다
-- [ ] **ENG-02**: 시스템이 고점 데이터를 state.json에 원자적으로 저장하여 재시작 후에도 복원한다
-- [ ] **ENG-03**: 고점 대비 하락률이 설정된 임계값(기본 -10%) 이상이면 매도 신호를 발생시킨다
-- [ ] **ENG-04**: 각 종목별로 개별 하락 임계값을 config.toml에서 설정할 수 있다
-- [ ] **ENG-05**: 드라이런 모드에서 실제 매도 없이 "매도 신호 발생" 로그만 기록한다
+- [x] **ENG-01**: 시스템이 각 종목의 고점(최고가)을 자동으로 추적한다
+- [x] **ENG-02**: 시스템이 고점 데이터를 state.json에 원자적으로 저장하여 재시작 후에도 복원한다
+- [x] **ENG-03**: 고점 대비 하락률이 설정된 임계값(기본 -10%) 이상이면 매도 신호를 발생시킨다
+- [x] **ENG-04**: 각 종목별로 개별 하락 임계값을 config.toml에서 설정할 수 있다
+- [x] **ENG-05**: 드라이런 모드에서 실제 매도 없이 "매도 신호 발생" 로그만 기록한다
 
 ### 매도 주문 실행 (EXEC)
 
@@ -87,11 +87,11 @@
 | FEED-02 | Phase 1 | Complete |
 | FEED-03 | Phase 1 | Complete |
 | FEED-04 | Phase 1 | Complete |
-| ENG-01 | Phase 2 | Pending |
-| ENG-02 | Phase 2 | Pending |
-| ENG-03 | Phase 2 | Pending |
-| ENG-04 | Phase 2 | Pending |
-| ENG-05 | Phase 2 | Pending |
+| ENG-01 | Phase 2 | Complete |
+| ENG-02 | Phase 2 | Complete |
+| ENG-03 | Phase 2 | Complete |
+| ENG-04 | Phase 2 | Complete |
+| ENG-05 | Phase 2 | Complete |
 | EXEC-01 | Phase 3 | Pending |
 | EXEC-02 | Phase 3 | Pending |
 | EXEC-03 | Phase 3 | Pending |
