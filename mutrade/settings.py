@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # 모의투자 모드 토글 (D-03)
     kis_mock: bool = Field(False, alias="KIS_MOCK")
 
+    # 드라이런 모드 (Phase 2 — 트레일링 스탑 엔진)
+    dry_run: bool = Field(False, alias="DRY_RUN")
+
     @model_validator(mode="after")
     def validate_virtual_credentials(self) -> "Settings":
         """KIS_MOCK=true 일 때 가상 계좌 자격증명이 모두 존재하는지 검증."""
@@ -50,4 +53,7 @@ class Settings(BaseSettings):
                 raise ValueError(
                     f"KIS_MOCK=true requires virtual credentials: {', '.join(missing)}"
                 )
+            # KIS_MOCK=true 이면 dry_run 강제 활성화
+            if not self.dry_run:
+                object.__setattr__(self, "dry_run", True)
         return self

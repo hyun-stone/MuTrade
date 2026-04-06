@@ -98,3 +98,41 @@ def test_real_mode_does_not_require_virtual_fields(monkeypatch):
     s = Settings(_env_file=None)
     assert s.kis_mock is False
     assert s.kis_virtual_appkey is None
+
+
+class TestDryRun:
+    def test_dry_run_default_false(self, monkeypatch):
+        """DRY_RUN 기본값은 False."""
+        for k, v in _base_env().items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.delenv("DRY_RUN", raising=False)
+
+        from mutrade.settings import Settings
+        s = Settings(_env_file=None)
+        assert s.dry_run is False
+
+    def test_dry_run_explicit_true(self, monkeypatch):
+        """DRY_RUN=true 명시 시 활성화."""
+        for k, v in _base_env().items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.setenv("DRY_RUN", "true")
+
+        from mutrade.settings import Settings
+        s = Settings(_env_file=None)
+        assert s.dry_run is True
+
+    def test_kis_mock_forces_dry_run(self, monkeypatch):
+        """KIS_MOCK=true이면 DRY_RUN이 자동으로 True."""
+        env = _base_env()
+        env["KIS_MOCK"] = "true"
+        env["KIS_VIRTUAL_ID"] = "vid"
+        env["KIS_VIRTUAL_ACCOUNT"] = "vacc"
+        env["KIS_VIRTUAL_APPKEY"] = "vkey"
+        env["KIS_VIRTUAL_SECRETKEY"] = "vsec"
+        for k, v in env.items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.setenv("DRY_RUN", "false")
+
+        from mutrade.settings import Settings
+        s = Settings(_env_file=None)
+        assert s.dry_run is True
