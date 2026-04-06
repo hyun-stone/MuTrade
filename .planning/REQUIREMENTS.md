@@ -8,9 +8,9 @@
 ### 인증 및 설정 (CONF)
 
 - [ ] **CONF-01**: 시스템이 KIS OAuth 2.0 토큰을 취득하고 24시간 만료 전 자동 갱신한다
-- [ ] **CONF-02**: API 키·시크릿 등 민감 정보를 .env 파일로 분리하고 .gitignore에 포함한다
-- [ ] **CONF-03**: 사용자가 config.toml 파일로 모니터링 종목과 매도 조건을 설정할 수 있다
-- [ ] **CONF-04**: 시스템이 KRX 공휴일에는 모니터링을 자동으로 건너뛴다
+- [x] **CONF-02**: API 키·시크릿 등 민감 정보를 .env 파일로 분리하고 .gitignore에 포함한다
+- [x] **CONF-03**: 사용자가 config.toml 파일로 모니터링 종목과 매도 조건을 설정할 수 있다
+- [x] **CONF-04**: 시스템이 KRX 공휴일에는 모니터링을 자동으로 건너뛴다
 
 ### 가격 모니터링 (FEED)
 
@@ -80,9 +80,9 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CONF-01 | Phase 1 | Pending |
-| CONF-02 | Phase 1 | Pending |
-| CONF-03 | Phase 1 | Pending |
-| CONF-04 | Phase 1 | Pending |
+| CONF-02 | Phase 1 | Complete |
+| CONF-03 | Phase 1 | Complete |
+| CONF-04 | Phase 1 | Complete |
 | FEED-01 | Phase 1 | Pending |
 | FEED-02 | Phase 1 | Pending |
 | FEED-03 | Phase 1 | Pending |

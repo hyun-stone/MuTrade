@@ -29,9 +29,9 @@
   3. A KIS API error response (rt_cd != "0") is logged as an error and does not propagate a zero-price value into the trailing stop engine
   4. Sensitive credentials (.env file) are absent from version control and rejected at startup if missing required fields
   5. The bot skips polling on KRX public holidays and logs a skip message
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 01-01-PLAN.md — Project skeleton, settings validation, config.toml loader, KRX holiday check
+- [x] 01-01-PLAN.md — Project skeleton, settings validation, config.toml loader, KRX holiday check
 - [ ] 01-02-PLAN.md — KIS client factory, price feed with rate limiting, APScheduler, main.py entry point
 
 ### Phase 2: Trailing Stop Engine
@@ -74,7 +74,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation and KIS API Connectivity | 0/2 | Planned | - |
+| 1. Foundation and KIS API Connectivity | 1/2 | In Progress|  |
 | 2. Trailing Stop Engine | 0/? | Not started | - |
 | 3. Order Execution | 0/? | Not started | - |
 | 4. Notifications and Operational Polish | 0/? | Not started | - |

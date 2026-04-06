@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-04-06T14:44:37.113Z"
-last_activity: 2026-04-06 — Roadmap created, ready to begin Phase 1 planning
+status: executing
+stopped_at: Completed 01-01-PLAN.md (foundation skeleton)
+last_updated: "2026-04-06T15:15:35.578Z"
+last_activity: 2026-04-06
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** 조건 충족 시 사람의 개입 없이 즉시 자동 매도하여 손실을 방어한다.
-**Current focus:** Phase 1 — Foundation and KIS API Connectivity
+**Current focus:** Phase 01 — foundation-and-kis-api-connectivity
 
 ## Current Position
 
-Phase: 0 of 4 (Not started)
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-04-06 — Roadmap created, ready to begin Phase 1 planning
+Phase: 01 (foundation-and-kis-api-connectivity) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-06
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01-foundation-and-kis-api-connectivity P01 | 5 | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Recent decisions affecting current work:
 - Roadmap: 4-phase structure derived from dependency graph (auth+config first, engine second, orders third, notifications last)
 - Research: `python-kis 4.x` is recommended KIS wrapper — verify on PyPI before pinning in Phase 1
 - Research: Telegram chosen over KakaoTalk for notifications (no 30-day OAuth refresh)
+- [Phase 01-foundation-and-kis-api-connectivity]: python-kis 4.x 표기는 버전 체계 오류 — 실제 최신 버전 2.1.6 사용 (PyPI 확인)
+- [Phase 01-foundation-and-kis-api-connectivity]: exchange_calendars XKRX로 KRX 공휴일 오프라인 판정 채택 — httpx+KIS API보다 신뢰성 높음
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T14:44:37.111Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-foundation-and-kis-api-connectivity/01-CONTEXT.md
+Last session: 2026-04-06T15:15:35.575Z
+Stopped at: Completed 01-01-PLAN.md (foundation skeleton)
+Resume file: None
