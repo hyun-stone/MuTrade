@@ -1,0 +1,149 @@
+"""
+tests/test_scheduler.py
+
+APScheduler 스케줄러 및 폴링 세션 테스트.
+
+커버리지:
+- create_poll_session: 비거래일에는 즉시 반환 (poll_prices 호출 없음)
+- create_poll_session: 거래일에는 poll_prices 를 최소 1회 호출
+- create_poll_session: 장 마감 시간 도달 시 루프 종료
+"""
+from datetime import datetime, date
+from unittest.mock import MagicMock, patch, call
+from zoneinfo import ZoneInfo
+
+import pytest
+
+from mutrade.config.loader import AppConfig, SymbolConfig
+from mutrade.monitor.scheduler import create_poll_session
+
+KST = ZoneInfo("Asia/Seoul")
+
+
+# ─── 픽스처 ────────────────────────────────────────────────────────────────
+
+def make_config(
+    symbols=None,
+    market_open_hour=9,
+    market_open_minute=0,
+    market_close_hour=15,
+    market_close_minute=20,
+    poll_interval=3.0,
+):
+    if symbols is None:
+        symbols = [
+            SymbolConfig(code="005930", name="삼성전자", threshold=0.10),
+        ]
+    return AppConfig(
+        poll_interval=poll_interval,
+        default_threshold=0.10,
+        symbols=symbols,
+        market_open_hour=market_open_hour,
+        market_open_minute=market_open_minute,
+        market_close_hour=market_close_hour,
+        market_close_minute=market_close_minute,
+    )
+
+
+# ─── create_poll_session 테스트 ────────────────────────────────────────────
+
+class TestCreatePollSession:
+    """create_poll_session 반환 함수의 동작 테스트."""
+
+    def test_non_trading_day_returns_immediately(self):
+        """비거래일에는 즉시 반환되고 poll_prices 가 호출되지 않아야 한다."""
+        kis = MagicMock()
+        config = make_config()
+        run_session = create_poll_session(kis, config)
+
+        # 비거래일 날짜 반환
+        non_trading_dt = datetime(2026, 4, 5, 9, 0, 0, tzinfo=KST)  # 일요일
+
+        with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=False) as mock_holiday, \
+             patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
+             patch("mutrade.monitor.scheduler.poll_prices") as mock_poll:
+            mock_dt.now.return_value = non_trading_dt
+            run_session()
+
+        # poll_prices 는 호출되지 않아야 함
+        mock_poll.assert_not_called()
+
+    def test_trading_day_calls_poll_prices_at_least_once(self):
+        """거래일에는 장 마감 전까지 poll_prices 를 최소 1회 호출해야 한다."""
+        kis = MagicMock()
+
+        # 장 마감 시간을 현재 + 1분 뒤로 설정하여 루프가 1회만 실행되도록 제어
+        # 첫 번째 datetime.now(): 09:00 (루프 진입)
+        # 두 번째 datetime.now(): 09:01 = market_close (루프 종료)
+        trading_day_start = datetime(2026, 4, 7, 9, 0, 0, tzinfo=KST)
+        trading_day_end = datetime(2026, 4, 7, 9, 1, 0, tzinfo=KST)
+
+        config = make_config(
+            market_close_hour=9,
+            market_close_minute=1,  # 09:01에 마감
+        )
+
+        call_count = 0
+        def mock_now(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            # 첫 번째 호출(세션 시작 날짜 확인): trading_day_start
+            # 두 번째 호출(루프 내 시간 확인 - 첫 번째): trading_day_start (마감 전)
+            # 세 번째 호출(루프 내 시간 확인 - 두 번째): trading_day_end (마감)
+            if call_count <= 2:
+                return trading_day_start
+            return trading_day_end
+
+        with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=True), \
+             patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
+             patch("mutrade.monitor.scheduler.poll_prices", return_value={"005930": 75000.0}) as mock_poll, \
+             patch("mutrade.monitor.scheduler.time") as mock_time:
+            mock_dt.now.side_effect = mock_now
+            run_session = create_poll_session(kis, config)
+            run_session()
+
+        # poll_prices 가 최소 1회 호출되어야 함
+        assert mock_poll.call_count >= 1
+
+    def test_stops_polling_at_market_close(self):
+        """현재 시간이 장 마감 시간 이상이면 루프를 종료해야 한다."""
+        kis = MagicMock()
+
+        # 현재 시간이 이미 마감 시간 이후
+        market_close_dt = datetime(2026, 4, 7, 9, 1, 0, tzinfo=KST)
+
+        config = make_config(
+            market_close_hour=9,
+            market_close_minute=1,
+        )
+
+        with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=True), \
+             patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
+             patch("mutrade.monitor.scheduler.poll_prices") as mock_poll, \
+             patch("mutrade.monitor.scheduler.time") as mock_time:
+            mock_dt.now.return_value = market_close_dt
+            run_session = create_poll_session(kis, config)
+            run_session()
+
+        # 장 마감 시간이므로 poll_prices 가 호출되지 않아야 함
+        mock_poll.assert_not_called()
+
+    def test_is_krx_trading_day_receives_todays_date(self):
+        """is_krx_trading_day 가 오늘 날짜를 인자로 호출되어야 한다."""
+        kis = MagicMock()
+        config = make_config(
+            market_close_hour=9,
+            market_close_minute=0,
+        )
+
+        today_dt = datetime(2026, 4, 7, 9, 0, 0, tzinfo=KST)
+
+        with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=False) as mock_holiday, \
+             patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
+             patch("mutrade.monitor.scheduler.poll_prices") as mock_poll:
+            mock_dt.now.return_value = today_dt
+            run_session = create_poll_session(kis, config)
+            run_session()
+
+        # is_krx_trading_day 가 today_dt.date() 로 호출되어야 함
+        mock_holiday.assert_called_once_with(today_dt.date())
