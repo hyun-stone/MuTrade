@@ -20,8 +20,9 @@
 
 - [ ] 한국투자증권 API 연동 (보유 종목 조회, 현재가 조회, 매도 주문)
 - [ ] 모니터링 대상 종목을 사용자가 직접 설정 가능
-- [ ] 각 종목별 보유 기간 중 최고가(고점) 자동 추적
-- [ ] 고점 대비 -10% 이상 하락 시 시장가 즉시 매도 실행
+- [x] 각 종목별 보유 기간 중 최고가(고점) 자동 추적 — Validated in Phase 02: trailing-stop-engine
+- [x] 고점 대비 설정 임계값 이상 하락 시 매도 신호 발생 (드라이런 모드) — Validated in Phase 02: trailing-stop-engine
+- [ ] 드라이런 → 실매도 전환 (Phase 3: order-execution)
 - [ ] 시장 운영 시간(09:00~15:30)에만 모니터링 실행
 - [ ] 매도 실행 시 클라이언트 알림 (카카오톡 또는 기타 채널)
 - [ ] 매도 이력 및 실행 로그 파일 기록
@@ -73,4 +74,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 — Phase 01 complete (foundation + KIS API connectivity)*
+*Last updated: 2026-04-07 — Phase 02 complete (trailing stop engine — peak tracking, state persistence, dry-run signals)*
