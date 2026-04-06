@@ -9,7 +9,8 @@ MuTrade 봇 엔트리포인트.
   3. AppConfig 로드 (config.toml)
   4. PyKis 클라이언트 초기화 (keep_token=True — 24h 토큰 자동 갱신)
   5. TrailingStopEngine 초기화 (StateStore에서 고점 복원)
-  6. APScheduler 시작 (블로킹 — Mon-Fri 09:00 KST 자동 폴링)
+  6. OrderExecutor 초기화 (매도 주문 실행기)
+  7. APScheduler 시작 (블로킹 — Mon-Fri 09:00 KST 자동 폴링)
 
 Usage:
   python mutrade/main.py
@@ -25,6 +26,7 @@ from mutrade.kis.client import create_kis_client
 from mutrade.monitor.scheduler import start_scheduler
 from mutrade.engine.state_store import StateStore
 from mutrade.engine.trailing_stop import TrailingStopEngine
+from mutrade.executor.order_executor import OrderExecutor
 
 
 def main() -> None:
@@ -77,8 +79,15 @@ def main() -> None:
         settings.dry_run, len(engine.states),
     )
 
+    # 매도 주문 실행기 초기화
+    executor = OrderExecutor(kis=kis, dry_run=settings.dry_run)
+    logger.info(
+        "Order executor initialized. dry_run={}",
+        settings.dry_run,
+    )
+
     # 스케줄러 시작 (블로킹 — 종료까지 반환 안 됨)
-    start_scheduler(kis, config, engine)
+    start_scheduler(kis, config, engine, executor)
 
 
 if __name__ == "__main__":
