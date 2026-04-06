@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mutrade"
+version = "0.1.0"
+description = "자동 트레일링 스탑 트레이딩 봇 — 한국투자증권 API 기반"
+requires-python = ">=3.11"
+dependencies = [
+    "python-kis==2.1.6",
+    "pydantic-settings==2.13.1",
+    "python-dotenv==1.2.2",
+    "loguru==0.7.3",
+    "APScheduler==3.11.2",
+    "exchange-calendars==4.13.2",
+    "httpx==0.28.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-mock"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mutrade*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
