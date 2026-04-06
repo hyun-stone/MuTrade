@@ -12,7 +12,9 @@
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] 한국투자증권 API 연동 (현재가 조회) — Validated in Phase 01: foundation-and-kis-api-connectivity
+- [x] 시장 운영 시간(09:00~15:30)에만 모니터링 실행 — Validated in Phase 01: foundation-and-kis-api-connectivity
+- [x] 설정 파일로 종목별 매도 조건 관리 — Validated in Phase 01: foundation-and-kis-api-connectivity
 
 ### Active
 
@@ -71,4 +73,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-06 after initialization*
+*Last updated: 2026-04-07 — Phase 01 complete (foundation + KIS API connectivity)*
