@@ -11,7 +11,7 @@
 ## Phases
 
 - [ ] **Phase 1: Foundation and KIS API Connectivity** — Config, secrets, auth token lifecycle, price/balance queries with correct error handling and rate limiting
-- [ ] **Phase 2: Trailing Stop Engine** — Per-symbol high-water mark tracking, drop calculation, sell signal emission, state persistence, dry-run mode
+- [x] **Phase 2: Trailing Stop Engine** — Per-symbol high-water mark tracking, drop calculation, sell signal emission, state persistence, dry-run mode (completed 2026-04-06)
 - [ ] **Phase 3: Order Execution** — Live market-sell order submission with idempotency guard, correct quantity handling, and fill confirmation
 - [ ] **Phase 4: Notifications and Operational Polish** — Telegram alerts, trade history log, startup/shutdown logging, KRX holiday handling
 
@@ -44,10 +44,10 @@ Plans:
   3. When a symbol's price drops >= the configured threshold from its peak, a "SELL SIGNAL" log entry is emitted in dry-run mode (no order is placed)
   4. A per-symbol threshold set in `config.toml` overrides the default -10% threshold for that symbol
   5. No sell signal is emitted on the first price tick after startup, even if the opening price is below the persisted peak
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 02-01-PLAN.md — TDD: 트레일링 스탑 엔진 코어 (모델, 상태 저장소, 엔진 로직)
-- [ ] 02-02-PLAN.md — 엔진 통합 (Settings DRY_RUN, 스케줄러 연결, main.py 와이어링)
+- [x] 02-02-PLAN.md — 엔진 통합 (Settings DRY_RUN, 스케줄러 연결, main.py 와이어링)
 
 ### Phase 3: Order Execution
 **Goal**: The bot submits a real market-sell order when a sell signal is triggered, using the correct sellable quantity, without ever submitting duplicate orders — validated in KIS paper trading (모의투자) before production credentials are used.
@@ -60,7 +60,7 @@ Plans:
   4. End-to-end sell flow completes successfully in KIS paper trading (모의투자) with paper trading `tr_id` values
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — TDD: 트레일링 스탑 엔진 코어 (모델, 상태 저장소, 엔진 로직)
+- [x] 02-01-PLAN.md — TDD: 트레일링 스탑 엔진 코어 (모델, 상태 저장소, 엔진 로직)
 - [ ] 02-02-PLAN.md — 엔진 통합 (Settings DRY_RUN, 스케줄러 연결, main.py 와이어링)
 
 ### Phase 4: Notifications and Operational Polish
@@ -84,7 +84,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation and KIS API Connectivity | 1/2 | In Progress|  |
-| 2. Trailing Stop Engine | 1/2 | In Progress|  |
+| 2. Trailing Stop Engine | 2/2 | Complete   | 2026-04-06 |
 | 3. Order Execution | 0/? | Not started | - |
 | 4. Notifications and Operational Polish | 0/? | Not started | - |
 

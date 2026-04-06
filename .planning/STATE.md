@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02-01-PLAN.md (trailing stop engine core — TDD)
-last_updated: "2026-04-06T15:57:57.252Z"
+status: verifying
+stopped_at: Completed 02-02-PLAN.md (engine integration — scheduler + main.py wiring)
+last_updated: "2026-04-06T16:02:00.682Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 Phase: 02 (trailing-stop-engine) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-06
 
 Progress: [░░░░░░░░░░] 0%
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation-and-kis-api-connectivity P01 | 5 | 2 tasks | 15 files |
 | Phase 01-foundation-and-kis-api-connectivity P02 | 4 | 2 tasks | 7 files |
 | Phase 02-trailing-stop-engine P01 | 3 | 1 tasks | 6 files |
+| Phase 02 P02 | 129 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Recent decisions affecting current work:
 - [Phase 01-foundation-and-kis-api-connectivity]: KisAPIError 로깅: getattr(e, 'rt_cd', None) 패턴으로 mock과 실제 객체 모두 안전하게 처리
 - [Phase 02-trailing-stop-engine]: warm=False guard: 첫 tick에서는 SellSignal 없음 — 재시작 직후 오탐 방지
 - [Phase 02-trailing-stop-engine]: peak_updated 플래그: 고점 갱신 시에만 StateStore.save() 호출 — 매 tick I/O 없음
+- [Phase 02]: KIS_MOCK=true 시 DRY_RUN 자동 강제 — 모의투자 환경에서 실매도는 의미 없으므로 model_validator에서 강제
+- [Phase 02]: 엔진 상태(peak/warm)를 세션 시작 시 로깅 — 재시작 후 state.json 복원 확인용
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T15:57:57.250Z
-Stopped at: Completed 02-01-PLAN.md (trailing stop engine core — TDD)
+Last session: 2026-04-06T16:02:00.680Z
+Stopped at: Completed 02-02-PLAN.md (engine integration — scheduler + main.py wiring)
 Resume file: None
