@@ -32,7 +32,7 @@
 **Plans:** 1/2 plans executed
 Plans:
 - [x] 01-01-PLAN.md — Project skeleton, settings validation, config.toml loader, KRX holiday check
-- [ ] 01-02-PLAN.md — KIS client factory, price feed with rate limiting, APScheduler, main.py entry point
+- [x] 01-02-PLAN.md — KIS client factory, price feed with rate limiting, APScheduler, main.py entry point
 
 ### Phase 2: Trailing Stop Engine
 **Goal**: The bot correctly tracks peak prices per symbol across restarts and emits sell signals in dry-run mode when a symbol drops the configured threshold from its high-water mark — fully testable without touching real orders.

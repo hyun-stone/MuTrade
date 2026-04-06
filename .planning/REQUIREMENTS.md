@@ -7,17 +7,17 @@
 
 ### 인증 및 설정 (CONF)
 
-- [ ] **CONF-01**: 시스템이 KIS OAuth 2.0 토큰을 취득하고 24시간 만료 전 자동 갱신한다
+- [x] **CONF-01**: 시스템이 KIS OAuth 2.0 토큰을 취득하고 24시간 만료 전 자동 갱신한다
 - [x] **CONF-02**: API 키·시크릿 등 민감 정보를 .env 파일로 분리하고 .gitignore에 포함한다
 - [x] **CONF-03**: 사용자가 config.toml 파일로 모니터링 종목과 매도 조건을 설정할 수 있다
 - [x] **CONF-04**: 시스템이 KRX 공휴일에는 모니터링을 자동으로 건너뛴다
 
 ### 가격 모니터링 (FEED)
 
-- [ ] **FEED-01**: 시스템이 시장 운영 시간(09:00~15:20 KST) 중에만 가격을 폴링한다
-- [ ] **FEED-02**: 시스템이 설정된 종목의 현재가를 3~5초 간격으로 조회한다
-- [ ] **FEED-03**: 시스템이 KIS API 레이트 리밋을 초과하지 않도록 요청 간격을 조절한다
-- [ ] **FEED-04**: 시스템이 KIS API 응답의 rt_cd 값을 확인하여 HTTP 200 내 에러를 올바르게 처리한다
+- [x] **FEED-01**: 시스템이 시장 운영 시간(09:00~15:20 KST) 중에만 가격을 폴링한다
+- [x] **FEED-02**: 시스템이 설정된 종목의 현재가를 3~5초 간격으로 조회한다
+- [x] **FEED-03**: 시스템이 KIS API 레이트 리밋을 초과하지 않도록 요청 간격을 조절한다
+- [x] **FEED-04**: 시스템이 KIS API 응답의 rt_cd 값을 확인하여 HTTP 200 내 에러를 올바르게 처리한다
 
 ### 트레일링 스탑 엔진 (ENG)
 
@@ -79,14 +79,14 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CONF-01 | Phase 1 | Pending |
+| CONF-01 | Phase 1 | Complete |
 | CONF-02 | Phase 1 | Complete |
 | CONF-03 | Phase 1 | Complete |
 | CONF-04 | Phase 1 | Complete |
-| FEED-01 | Phase 1 | Pending |
-| FEED-02 | Phase 1 | Pending |
-| FEED-03 | Phase 1 | Pending |
-| FEED-04 | Phase 1 | Pending |
+| FEED-01 | Phase 1 | Complete |
+| FEED-02 | Phase 1 | Complete |
+| FEED-03 | Phase 1 | Complete |
+| FEED-04 | Phase 1 | Complete |
 | ENG-01 | Phase 2 | Pending |
 | ENG-02 | Phase 2 | Pending |
 | ENG-03 | Phase 2 | Pending |

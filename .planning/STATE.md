@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-01-PLAN.md (foundation skeleton)
-last_updated: "2026-04-06T15:15:35.578Z"
+status: verifying
+stopped_at: Completed 01-02-PLAN.md (KIS client, price feed, scheduler, main.py)
+last_updated: "2026-04-06T15:24:38.539Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 Phase: 01 (foundation-and-kis-api-connectivity) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-06
 
 Progress: [░░░░░░░░░░] 0%
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01-foundation-and-kis-api-connectivity P01 | 5 | 2 tasks | 15 files |
+| Phase 01-foundation-and-kis-api-connectivity P02 | 4 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,8 @@ Recent decisions affecting current work:
 - Research: Telegram chosen over KakaoTalk for notifications (no 30-day OAuth refresh)
 - [Phase 01-foundation-and-kis-api-connectivity]: python-kis 4.x 표기는 버전 체계 오류 — 실제 최신 버전 2.1.6 사용 (PyPI 확인)
 - [Phase 01-foundation-and-kis-api-connectivity]: exchange_calendars XKRX로 KRX 공휴일 오프라인 판정 채택 — httpx+KIS API보다 신뢰성 높음
+- [Phase 01-foundation-and-kis-api-connectivity]: PyKis 2.1.6 가상계좌: virtual=True 없음, virtual_id/virtual_appkey/virtual_secretkey kwargs로 활성화
+- [Phase 01-foundation-and-kis-api-connectivity]: KisAPIError 로깅: getattr(e, 'rt_cd', None) 패턴으로 mock과 실제 객체 모두 안전하게 처리
 
 ### Pending Todos
 
@@ -83,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T15:15:35.575Z
-Stopped at: Completed 01-01-PLAN.md (foundation skeleton)
+Last session: 2026-04-06T15:24:38.537Z
+Stopped at: Completed 01-02-PLAN.md (KIS client, price feed, scheduler, main.py)
 Resume file: None
