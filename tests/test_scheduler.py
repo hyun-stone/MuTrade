@@ -9,6 +9,8 @@ APScheduler 스케줄러 및 폴링 세션 테스트.
 - create_poll_session: 장 마감 시간 도달 시 루프 종료
 - create_poll_session: engine.tick(prices) 가 호출되어야 한다
 - create_poll_session: engine.tick()이 SellSignal을 반환하면 SELL SIGNAL 로그 출력
+- create_poll_session: dry_run=False SellSignal 발생 시 executor.execute() 호출
+- create_poll_session: dry_run=True SellSignal 발생 시 executor.execute() 미호출
 """
 from datetime import datetime, date
 from unittest.mock import MagicMock, patch, call
@@ -18,6 +20,7 @@ import pytest
 
 from mutrade.config.loader import AppConfig, SymbolConfig
 from mutrade.engine.models import SellSignal
+from mutrade.executor.order_executor import OrderExecutor
 from mutrade.monitor.scheduler import create_poll_session
 
 KST = ZoneInfo("Asia/Seoul")
@@ -56,6 +59,11 @@ def make_engine_mock():
     return engine
 
 
+def make_executor_mock():
+    """OrderExecutor mock 생성."""
+    return MagicMock(spec=OrderExecutor)
+
+
 # ─── create_poll_session 테스트 ────────────────────────────────────────────
 
 class TestCreatePollSession:
@@ -66,7 +74,8 @@ class TestCreatePollSession:
         kis = MagicMock()
         config = make_config()
         engine = make_engine_mock()
-        run_session = create_poll_session(kis, config, engine)
+        executor = make_executor_mock()
+        run_session = create_poll_session(kis, config, engine, executor)
 
         # 비거래일 날짜 반환
         non_trading_dt = datetime(2026, 4, 5, 9, 0, 0, tzinfo=KST)  # 일요일
@@ -107,13 +116,14 @@ class TestCreatePollSession:
             return trading_day_end
 
         engine = make_engine_mock()
+        executor = make_executor_mock()
 
         with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=True), \
              patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
              patch("mutrade.monitor.scheduler.poll_prices", return_value={"005930": 75000.0}) as mock_poll, \
              patch("mutrade.monitor.scheduler.time") as mock_time:
             mock_dt.now.side_effect = mock_now
-            run_session = create_poll_session(kis, config, engine)
+            run_session = create_poll_session(kis, config, engine, executor)
             run_session()
 
         # poll_prices 가 최소 1회 호출되어야 함
@@ -132,13 +142,14 @@ class TestCreatePollSession:
         )
 
         engine = make_engine_mock()
+        executor = make_executor_mock()
 
         with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=True), \
              patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
              patch("mutrade.monitor.scheduler.poll_prices") as mock_poll, \
              patch("mutrade.monitor.scheduler.time") as mock_time:
             mock_dt.now.return_value = market_close_dt
-            run_session = create_poll_session(kis, config, engine)
+            run_session = create_poll_session(kis, config, engine, executor)
             run_session()
 
         # 장 마감 시간이므로 poll_prices 가 호출되지 않아야 함
@@ -154,12 +165,13 @@ class TestCreatePollSession:
 
         today_dt = datetime(2026, 4, 7, 9, 0, 0, tzinfo=KST)
         engine = make_engine_mock()
+        executor = make_executor_mock()
 
         with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=False) as mock_holiday, \
              patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
              patch("mutrade.monitor.scheduler.poll_prices") as mock_poll:
             mock_dt.now.return_value = today_dt
-            run_session = create_poll_session(kis, config, engine)
+            run_session = create_poll_session(kis, config, engine, executor)
             run_session()
 
         # is_krx_trading_day 가 today_dt.date() 로 호출되어야 함
@@ -186,6 +198,7 @@ class TestCreatePollSession:
             return trading_day_end
 
         engine = make_engine_mock()
+        executor = make_executor_mock()
         prices = {"005930": 75000.0}
 
         with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=True), \
@@ -193,7 +206,7 @@ class TestCreatePollSession:
              patch("mutrade.monitor.scheduler.poll_prices", return_value=prices) as mock_poll, \
              patch("mutrade.monitor.scheduler.time"):
             mock_dt.now.side_effect = mock_now
-            run_session = create_poll_session(kis, config, engine)
+            run_session = create_poll_session(kis, config, engine, executor)
             run_session()
 
         # engine.tick이 poll_prices 결과로 호출되어야 함
@@ -230,6 +243,7 @@ class TestCreatePollSession:
         )
         engine = make_engine_mock()
         engine.tick.return_value = [signal]
+        executor = make_executor_mock()
 
         warning_calls = []
 
@@ -240,10 +254,98 @@ class TestCreatePollSession:
              patch("mutrade.monitor.scheduler.logger") as mock_logger:
             mock_dt.now.side_effect = mock_now
             mock_logger.warning.side_effect = lambda msg, *args, **kwargs: warning_calls.append(msg)
-            run_session = create_poll_session(kis, config, engine)
+            run_session = create_poll_session(kis, config, engine, executor)
             run_session()
 
         # SELL SIGNAL 로그 메시지가 출력되어야 함
         assert any("SELL SIGNAL" in call for call in warning_calls), (
             f"Expected 'SELL SIGNAL' in warning logs, got: {warning_calls}"
         )
+
+    def test_live_signal_calls_executor(self):
+        """dry_run=False SellSignal 발생 시 executor.execute(signal)이 호출되어야 한다."""
+        kis = MagicMock()
+
+        trading_day_start = datetime(2026, 4, 7, 9, 0, 0, tzinfo=KST)
+        trading_day_end = datetime(2026, 4, 7, 9, 1, 0, tzinfo=KST)
+
+        config = make_config(
+            market_close_hour=9,
+            market_close_minute=1,
+        )
+
+        call_count = 0
+        def mock_now(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                return trading_day_start
+            return trading_day_end
+
+        signal = SellSignal(
+            code="005930",
+            name="삼성전자",
+            current_price=67500.0,
+            peak_price=75000.0,
+            drop_pct=0.10,
+            threshold=0.10,
+            dry_run=False,  # LIVE signal
+        )
+        engine = make_engine_mock()
+        engine.tick.return_value = [signal]
+        executor = make_executor_mock()
+
+        with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=True), \
+             patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
+             patch("mutrade.monitor.scheduler.poll_prices", return_value={"005930": 67500.0}), \
+             patch("mutrade.monitor.scheduler.time"):
+            mock_dt.now.side_effect = mock_now
+            run_session = create_poll_session(kis, config, engine, executor)
+            run_session()
+
+        # executor.execute가 signal과 함께 호출되어야 함
+        executor.execute.assert_called_once_with(signal)
+
+    def test_dry_run_signal_skips_executor(self):
+        """dry_run=True SellSignal 발생 시 executor.execute()가 호출되지 않아야 한다."""
+        kis = MagicMock()
+
+        trading_day_start = datetime(2026, 4, 7, 9, 0, 0, tzinfo=KST)
+        trading_day_end = datetime(2026, 4, 7, 9, 1, 0, tzinfo=KST)
+
+        config = make_config(
+            market_close_hour=9,
+            market_close_minute=1,
+        )
+
+        call_count = 0
+        def mock_now(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                return trading_day_start
+            return trading_day_end
+
+        signal = SellSignal(
+            code="005930",
+            name="삼성전자",
+            current_price=67500.0,
+            peak_price=75000.0,
+            drop_pct=0.10,
+            threshold=0.10,
+            dry_run=True,  # DRY-RUN signal
+        )
+        engine = make_engine_mock()
+        engine.tick.return_value = [signal]
+        executor = make_executor_mock()
+
+        with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=True), \
+             patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
+             patch("mutrade.monitor.scheduler.poll_prices", return_value={"005930": 67500.0}), \
+             patch("mutrade.monitor.scheduler.time"):
+            mock_dt.now.side_effect = mock_now
+            run_session = create_poll_session(kis, config, engine, executor)
+            run_session()
+
+        # dry_run=True이므로 executor.execute는 호출되지 않아야 함
+        executor.execute.assert_not_called()

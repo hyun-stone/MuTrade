@@ -10,6 +10,7 @@ APScheduler 기반 시장 시간 스케줄러.
   - 비거래일(주말, 공휴일)이면 즉시 반환
   - KeyboardInterrupt / SystemExit 으로 안전하게 종료
   - 폴링 결과를 TrailingStopEngine.tick()에 전달, SellSignal 발생 시 로깅
+  - dry_run=False SellSignal은 OrderExecutor.execute()로 실제 매도 주문 실행
 """
 import time
 from datetime import datetime
@@ -23,22 +24,27 @@ from mutrade.monitor.holiday import is_krx_trading_day
 from mutrade.config.loader import AppConfig
 from mutrade.kis.price_feed import poll_prices
 from mutrade.engine.trailing_stop import TrailingStopEngine
+from mutrade.executor.order_executor import OrderExecutor
 
 KST = ZoneInfo("Asia/Seoul")
 
 
-def create_poll_session(kis, config: AppConfig, engine: TrailingStopEngine):
+def create_poll_session(
+    kis, config: AppConfig, engine: TrailingStopEngine, executor: OrderExecutor
+):
     """
     폴링 세션 함수를 생성한다.
 
     APScheduler 잡으로 등록되는 클로저를 반환한다.
     실행 시 KRX 거래일 확인 후 장 마감 시간(기본 15:20 KST)까지 반복 폴링한다.
     폴링한 가격을 engine.tick()에 전달하고 SellSignal 발생 시 경고 로그를 출력한다.
+    dry_run=False인 SellSignal은 executor.execute(sig)를 호출하여 실제 매도 주문을 실행한다.
 
     Args:
         kis: 초기화된 PyKis 인스턴스
         config: AppConfig 인스턴스
         engine: TrailingStopEngine 인스턴스
+        executor: OrderExecutor 인스턴스
 
     Returns:
         인자 없이 호출 가능한 폴링 세션 함수
@@ -90,6 +96,8 @@ def create_poll_session(kis, config: AppConfig, engine: TrailingStopEngine):
                     sig.code, sig.name, sig.current_price,
                     sig.peak_price, sig.drop_pct, sig.threshold,
                 )
+                if not sig.dry_run:
+                    executor.execute(sig)
 
             logger.info(
                 "Polled {} symbols: {}",
@@ -102,7 +110,9 @@ def create_poll_session(kis, config: AppConfig, engine: TrailingStopEngine):
     return run_session
 
 
-def start_scheduler(kis, config: AppConfig, engine: TrailingStopEngine) -> None:
+def start_scheduler(
+    kis, config: AppConfig, engine: TrailingStopEngine, executor: OrderExecutor
+) -> None:
     """
     APScheduler BlockingScheduler 를 시작한다.
 
@@ -113,9 +123,10 @@ def start_scheduler(kis, config: AppConfig, engine: TrailingStopEngine) -> None:
         kis: 초기화된 PyKis 인스턴스
         config: AppConfig 인스턴스 (시장 시간 포함)
         engine: TrailingStopEngine 인스턴스
+        executor: OrderExecutor 인스턴스
     """
     scheduler = BlockingScheduler(timezone="Asia/Seoul")
-    poll_session = create_poll_session(kis, config, engine)
+    poll_session = create_poll_session(kis, config, engine, executor)
 
     scheduler.add_job(
         poll_session,
