@@ -29,7 +29,7 @@
   3. A KIS API error response (rt_cd != "0") is logged as an error and does not propagate a zero-price value into the trailing stop engine
   4. Sensitive credentials (.env file) are absent from version control and rejected at startup if missing required fields
   5. The bot skips polling on KRX public holidays and logs a skip message
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 01-01-PLAN.md — Project skeleton, settings validation, config.toml loader, KRX holiday check
 - [x] 01-02-PLAN.md — KIS client factory, price feed with rate limiting, APScheduler, main.py entry point
@@ -60,8 +60,8 @@ Plans:
   4. End-to-end sell flow completes successfully in KIS paper trading (모의투자) with paper trading `tr_id` values
 **Plans:** 2 plans
 Plans:
-- [x] 02-01-PLAN.md — TDD: 트레일링 스탑 엔진 코어 (모델, 상태 저장소, 엔진 로직)
-- [ ] 02-02-PLAN.md — 엔진 통합 (Settings DRY_RUN, 스케줄러 연결, main.py 와이어링)
+- [ ] 03-01-PLAN.md — TDD: OrderExecutor 핵심 로직 (시장가 매도, 수량 조회, SELL_PENDING, 체결 확인)
+- [ ] 03-02-PLAN.md — OrderExecutor 통합 (scheduler 연결, main.py 와이어링)
 
 ### Phase 4: Notifications and Operational Polish
 **Goal**: Every sell execution generates an immediate Telegram notification with order details, all trade events are durably logged, and the bot reports its monitoring state on start and stop.
@@ -74,8 +74,8 @@ Plans:
   4. On bot startup, the log shows the list of monitored symbols and their loaded high-water marks; on shutdown, a final log entry is written
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — TDD: 트레일링 스탑 엔진 코어 (모델, 상태 저장소, 엔진 로직)
-- [ ] 02-02-PLAN.md — 엔진 통합 (Settings DRY_RUN, 스케줄러 연결, main.py 와이어링)
+- [ ] 04-01-PLAN.md — [to be planned]
+- [ ] 04-02-PLAN.md — [to be planned]
 
 ---
 
@@ -83,9 +83,9 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation and KIS API Connectivity | 1/2 | In Progress|  |
+| 1. Foundation and KIS API Connectivity | 2/2 | Complete | 2026-04-06 |
 | 2. Trailing Stop Engine | 2/2 | Complete   | 2026-04-06 |
-| 3. Order Execution | 0/? | Not started | - |
+| 3. Order Execution | 0/2 | Planned | - |
 | 4. Notifications and Operational Polish | 0/? | Not started | - |
 
 ---
@@ -118,8 +118,8 @@ Plans:
 
 **Total v1 requirements:** 21
 **Mapped:** 21
-**Unmapped:** 0 ✓
+**Unmapped:** 0
 
 ---
 *Roadmap created: 2026-04-06*
-*Last updated: 2026-04-06 after Phase 1 planning*
+*Last updated: 2026-04-07 after Phase 3 planning*
