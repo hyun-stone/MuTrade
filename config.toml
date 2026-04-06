@@ -1,0 +1,12 @@
+[general]
+poll_interval = 3.0
+default_threshold = 0.10
+
+[[symbols]]
+code = "005930"
+name = "삼성전자"
+
+[[symbols]]
+code = "000660"
+name = "SK하이닉스"
+threshold = 0.08
