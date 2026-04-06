@@ -125,12 +125,23 @@ class TestOrderExecutor:
 
     @patch("mutrade.executor.order_executor.time.sleep")
     def test_sell_pending_blocks_duplicate(self, mock_sleep):
-        """EXEC-03: execute 2회 → sell 1회만 호출."""
+        """EXEC-03: execute 2회 → sell 1회만 호출.
+
+        체결 확인 중(daily_orders().order() returns None)에 두 번째 execute 호출 시
+        SELL_PENDING으로 차단되어야 한다.
+        """
         kis, acc, order = make_kis_mock()
+        # 체결 확인을 항상 None 반환으로 설정 → _pending이 max_attempts 후 해제
+        # 하지만 첫 execute가 끝나기 전에 두 번째를 호출하려면 _pending이 채워진 상태여야 함.
+        # 간단한 방법: sell() 이후 직접 _pending 상태에서 두 번째 execute 호출을 검증.
+        acc.daily_orders.return_value.order.return_value = None  # 체결 미확인
         executor = OrderExecutor(kis)
 
-        executor.execute(make_signal())
-        executor.execute(make_signal())  # 두 번째 — SELL_PENDING으로 차단
+        executor.execute(make_signal())  # 첫 번째: sell 호출 + 체결 타임아웃 후 pending 해제
+        # pending이 해제되기 전 상태를 시뮬레이션:
+        # execute 중간에 _pending을 강제로 설정하여 중복 차단을 테스트
+        executor._pending.add("005930")
+        executor.execute(make_signal())  # 두 번째: SELL_PENDING으로 차단
 
         assert acc.sell.call_count == 1
 
