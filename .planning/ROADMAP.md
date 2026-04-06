@@ -44,7 +44,10 @@ Plans:
   3. When a symbol's price drops >= the configured threshold from its peak, a "SELL SIGNAL" log entry is emitted in dry-run mode (no order is placed)
   4. A per-symbol threshold set in `config.toml` overrides the default -10% threshold for that symbol
   5. No sell signal is emitted on the first price tick after startup, even if the opening price is below the persisted peak
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — TDD: 트레일링 스탑 엔진 코어 (모델, 상태 저장소, 엔진 로직)
+- [ ] 02-02-PLAN.md — 엔진 통합 (Settings DRY_RUN, 스케줄러 연결, main.py 와이어링)
 
 ### Phase 3: Order Execution
 **Goal**: The bot submits a real market-sell order when a sell signal is triggered, using the correct sellable quantity, without ever submitting duplicate orders — validated in KIS paper trading (모의투자) before production credentials are used.
@@ -55,7 +58,10 @@ Plans:
   2. A SELL_PENDING flag is set for a symbol immediately after order submission; a second sell signal for the same symbol before fill confirmation does not submit a second order
   3. After order submission, the bot confirms fill status and logs the result (filled quantity and execution price)
   4. End-to-end sell flow completes successfully in KIS paper trading (모의투자) with paper trading `tr_id` values
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — TDD: 트레일링 스탑 엔진 코어 (모델, 상태 저장소, 엔진 로직)
+- [ ] 02-02-PLAN.md — 엔진 통합 (Settings DRY_RUN, 스케줄러 연결, main.py 와이어링)
 
 ### Phase 4: Notifications and Operational Polish
 **Goal**: Every sell execution generates an immediate Telegram notification with order details, all trade events are durably logged, and the bot reports its monitoring state on start and stop.
@@ -66,7 +72,10 @@ Plans:
   2. The Telegram notification is sent after the order submission completes, not before — a notification failure does not delay or block the sell order
   3. Each sell execution appends a timestamped record to the trade history log file, readable after bot restart
   4. On bot startup, the log shows the list of monitored symbols and their loaded high-water marks; on shutdown, a final log entry is written
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — TDD: 트레일링 스탑 엔진 코어 (모델, 상태 저장소, 엔진 로직)
+- [ ] 02-02-PLAN.md — 엔진 통합 (Settings DRY_RUN, 스케줄러 연결, main.py 와이어링)
 
 ---
 
