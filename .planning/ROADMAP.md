@@ -12,7 +12,7 @@
 
 - [ ] **Phase 1: Foundation and KIS API Connectivity** — Config, secrets, auth token lifecycle, price/balance queries with correct error handling and rate limiting
 - [x] **Phase 2: Trailing Stop Engine** — Per-symbol high-water mark tracking, drop calculation, sell signal emission, state persistence, dry-run mode (completed 2026-04-06)
-- [ ] **Phase 3: Order Execution** — Live market-sell order submission with idempotency guard, correct quantity handling, and fill confirmation
+- [x] **Phase 3: Order Execution** — Live market-sell order submission with idempotency guard, correct quantity handling, and fill confirmation (completed 2026-04-08)
 - [ ] **Phase 4: Notifications and Operational Polish** — Telegram alerts, trade history log, startup/shutdown logging, KRX holiday handling
 
 ---
@@ -61,7 +61,7 @@ Plans:
 **Plans:** 1/2 plans executed
 Plans:
 - [x] 03-01-PLAN.md — TDD: OrderExecutor 핵심 로직 (시장가 매도, 수량 조회, SELL_PENDING, 체결 확인)
-- [ ] 03-02-PLAN.md — OrderExecutor 통합 (scheduler 연결, main.py 와이어링)
+- [x] 03-02-PLAN.md — OrderExecutor 통합 (scheduler 연결, main.py 와이어링)
 
 ### Phase 4: Notifications and Operational Polish
 **Goal**: Every sell execution generates an immediate Telegram notification with order details, all trade events are durably logged, and the bot reports its monitoring state on start and stop.
