@@ -74,8 +74,8 @@ Plans:
   4. On bot startup, the log shows the list of monitored symbols and their loaded high-water marks; on shutdown, a final log entry is written
 **Plans:** 2 plans
 Plans:
-- [ ] 04-01-PLAN.md — [to be planned]
-- [ ] 04-02-PLAN.md — [to be planned]
+- [ ] 04-01-PLAN.md — TelegramNotifier 모듈 신설 + Settings Telegram 필드 + 의존성 추가 (Wave 1)
+- [ ] 04-02-PLAN.md — OrderExecutor 통합 ([TRADE] 로그, notifier 주입) + 종료 로그 + main.py 와이어링 (Wave 2)
 
 ---
 
@@ -86,7 +86,7 @@ Plans:
 | 1. Foundation and KIS API Connectivity | 2/2 | Complete | 2026-04-06 |
 | 2. Trailing Stop Engine | 2/2 | Complete   | 2026-04-06 |
 | 3. Order Execution | 1/2 | In Progress|  |
-| 4. Notifications and Operational Polish | 0/? | Not started | - |
+| 4. Notifications and Operational Polish | 0/2 | Not started | - |
 
 ---
 
@@ -122,4 +122,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-04-06*
-*Last updated: 2026-04-07 after Phase 3 planning*
+*Last updated: 2026-04-08 after Phase 4 planning*
