@@ -15,6 +15,7 @@ dependencies = [
     "APScheduler==3.11.2",
     "exchange-calendars==4.13.2",
     "httpx==0.28.1",
+    "python-telegram-bot==21.11.1",
 ]
 
 [project.optional-dependencies]

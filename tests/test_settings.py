@@ -100,6 +100,54 @@ def test_real_mode_does_not_require_virtual_fields(monkeypatch):
     assert s.kis_virtual_appkey is None
 
 
+class TestTelegramSettings:
+    def test_telegram_both_absent_ok(self, monkeypatch):
+        """TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID 모두 미설정 → Settings 정상 초기화, 두 필드 모두 None."""
+        for k, v in _base_env().items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+        monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+        from mutrade.settings import Settings
+        s = Settings(_env_file=None)
+        assert s.telegram_bot_token is None
+        assert s.telegram_chat_id is None
+
+    def test_telegram_both_present_ok(self, monkeypatch):
+        """두 필드 모두 설정 → Settings 정상 초기화, 두 필드 모두 해당 값."""
+        for k, v in _base_env().items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot123:ABC")
+        monkeypatch.setenv("TELEGRAM_CHAT_ID", "-1001234567890")
+        from mutrade.settings import Settings
+        s = Settings(_env_file=None)
+        assert s.telegram_bot_token == "bot123:ABC"
+        assert s.telegram_chat_id == "-1001234567890"
+
+    def test_telegram_partial_config_raises(self, monkeypatch):
+        """TELEGRAM_BOT_TOKEN만 설정(TELEGRAM_CHAT_ID 없음) → ValidationError 발생."""
+        for k, v in _base_env().items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot123:ABC")
+        monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+        from pydantic import ValidationError
+        from mutrade.settings import Settings
+        with pytest.raises(ValidationError) as exc_info:
+            Settings(_env_file=None)
+        assert "TELEGRAM_CHAT_ID" in str(exc_info.value)
+
+    def test_telegram_chat_id_only_raises(self, monkeypatch):
+        """TELEGRAM_CHAT_ID만 설정(TELEGRAM_BOT_TOKEN 없음) → ValidationError 발생."""
+        for k, v in _base_env().items():
+            monkeypatch.setenv(k, v)
+        monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+        monkeypatch.setenv("TELEGRAM_CHAT_ID", "-1001234567890")
+        from pydantic import ValidationError
+        from mutrade.settings import Settings
+        with pytest.raises(ValidationError) as exc_info:
+            Settings(_env_file=None)
+        assert "TELEGRAM_BOT_TOKEN" in str(exc_info.value)
+
+
 class TestDryRun:
     def test_dry_run_default_false(self, monkeypatch):
         """DRY_RUN 기본값은 False."""

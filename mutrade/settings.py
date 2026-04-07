@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # 드라이런 모드 (Phase 2 — 트레일링 스탑 엔진)
     dry_run: bool = Field(False, alias="DRY_RUN")
 
+    # Telegram 알림 설정 (선택적 — 둘 다 있거나 둘 다 없어야 함, D-01)
+    # T-04-02: repr=False로 토큰이 로그/repr에 노출되지 않도록 보호
+    telegram_bot_token: str | None = Field(None, alias="TELEGRAM_BOT_TOKEN", repr=False)
+    telegram_chat_id: str | None = Field(None, alias="TELEGRAM_CHAT_ID", repr=False)
+
     @model_validator(mode="after")
     def validate_virtual_credentials(self) -> "Settings":
         """KIS_MOCK=true 일 때 가상 계좌 자격증명이 모두 존재하는지 검증."""
@@ -56,4 +61,21 @@ class Settings(BaseSettings):
             # KIS_MOCK=true 이면 dry_run 강제 활성화
             if not self.dry_run:
                 object.__setattr__(self, "dry_run", True)
+        return self
+
+    @model_validator(mode="after")
+    def validate_telegram_credentials(self) -> "Settings":
+        """TELEGRAM_BOT_TOKEN과 TELEGRAM_CHAT_ID는 둘 다 있거나 둘 다 없어야 한다 (D-01)."""
+        has_token = bool(self.telegram_bot_token)
+        has_chat = bool(self.telegram_chat_id)
+        if has_token and not has_chat:
+            raise ValueError(
+                "TELEGRAM_BOT_TOKEN이 설정되었으나 TELEGRAM_CHAT_ID가 없습니다. "
+                "둘 다 설정하거나 둘 다 제거하세요."
+            )
+        if has_chat and not has_token:
+            raise ValueError(
+                "TELEGRAM_CHAT_ID가 설정되었으나 TELEGRAM_BOT_TOKEN이 없습니다. "
+                "둘 다 설정하거나 둘 다 제거하세요."
+            )
         return self
