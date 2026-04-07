@@ -9,12 +9,18 @@ mutrade/executor/order_executor.py
   3. 시장가 매도 주문 — account.sell(market="KRX", price=None) (EXEC-01)
   4. 체결 확인 — daily_orders().order(order) 폴링 (EXEC-04)
 """
+from __future__ import annotations
+
 import time
+from typing import TYPE_CHECKING
 
 from loguru import logger
 from pykis import PyKis, KisAPIError
 
 from mutrade.engine.models import SellSignal
+
+if TYPE_CHECKING:
+    from mutrade.notifier.telegram import TelegramNotifier
 
 
 class OrderExecutor:
@@ -24,10 +30,16 @@ class OrderExecutor:
     SELL_PENDING 플래그(내부 set)로 동일 종목 중복 주문 방지.
     """
 
-    def __init__(self, kis: PyKis, dry_run: bool = False):
+    def __init__(
+        self,
+        kis: PyKis,
+        dry_run: bool = False,
+        notifier: "TelegramNotifier | None" = None,
+    ):
         self._kis = kis
         self._dry_run = dry_run
         self._pending: set[str] = set()
+        self._notifier = notifier
 
     def execute(self, signal: SellSignal) -> None:
         """SellSignal을 처리하여 KIS 매도 주문 제출 또는 dry-run 로그 출력.
@@ -89,6 +101,18 @@ class OrderExecutor:
             qty,
             order.number,
         )
+        # NOTIF-03: [TRADE] 마커로 거래 이력 기록 — grep "[TRADE]"로 추출 가능
+        logger.info(
+            "[TRADE] 매도 주문 제출: {} ({}) qty={} current_price={:,.0f} "
+            "peak={:,.0f} drop={:.2%} threshold={:.1%} order={}",
+            signal.code, signal.name, qty,
+            signal.current_price, signal.peak_price,
+            signal.drop_pct, signal.threshold,
+            order.number,
+        )
+        # NOTIF-01: Telegram 알림 전송 (D-03: acc.sell() 직후, _confirm_fill() 전)
+        if self._notifier is not None:
+            self._notifier.notify(signal, qty)
         self._confirm_fill(acc, order, signal.code)
 
     def _confirm_fill(

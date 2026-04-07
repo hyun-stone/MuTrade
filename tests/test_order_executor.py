@@ -209,3 +209,50 @@ class TestOrderExecutor:
         executor.execute(make_signal(dry_run=False))
 
         acc.sell.assert_not_called()
+
+
+class TestNotifierIntegration:
+    """NOTIF-01/03 — notifier 주입 및 [TRADE] 로그 테스트."""
+
+    @patch("mutrade.executor.order_executor.time.sleep")
+    def test_trade_log_emitted(self, mock_sleep):
+        """실거래 execute() 후 [TRADE] 마커가 로그에 출력된다."""
+        kis, acc, order = make_kis_mock(orderable=10)
+        notifier = MagicMock()
+        executor = OrderExecutor(kis, notifier=notifier)
+
+        info_calls = []
+        with patch("mutrade.executor.order_executor.logger") as mock_logger:
+            mock_logger.info.side_effect = lambda msg, *a, **kw: info_calls.append(str(msg))
+            mock_logger.warning.side_effect = lambda msg, *a, **kw: None
+            mock_logger.error.side_effect = lambda msg, *a, **kw: None
+            executor.execute(make_signal())
+
+        assert any("[TRADE]" in c for c in info_calls), f"[TRADE] not found in: {info_calls}"
+
+    @patch("mutrade.executor.order_executor.time.sleep")
+    def test_notifier_called_after_sell(self, mock_sleep):
+        """notifier.notify(signal, qty)가 acc.sell() 직후 1회 호출된다."""
+        kis, acc, order = make_kis_mock(orderable=10)
+        notifier = MagicMock()
+        executor = OrderExecutor(kis, notifier=notifier)
+        signal = make_signal()
+        executor.execute(signal)
+        notifier.notify.assert_called_once_with(signal, 10)
+
+    @patch("mutrade.executor.order_executor.time.sleep")
+    def test_notifier_not_called_in_dry_run(self, mock_sleep):
+        """dry_run=True signal에서는 notifier.notify()가 호출되지 않는다."""
+        kis, acc, order = make_kis_mock()
+        notifier = MagicMock()
+        executor = OrderExecutor(kis, notifier=notifier)
+        executor.execute(make_signal(dry_run=True))
+        notifier.notify.assert_not_called()
+
+    @patch("mutrade.executor.order_executor.time.sleep")
+    def test_notifier_none_works(self, mock_sleep):
+        """notifier=None(기본값)으로 OrderExecutor 초기화 시 sell 정상 호출."""
+        kis, acc, order = make_kis_mock(orderable=10)
+        executor = OrderExecutor(kis)  # notifier 없음
+        executor.execute(make_signal())
+        acc.sell.assert_called_once()
