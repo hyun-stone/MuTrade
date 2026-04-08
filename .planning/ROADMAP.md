@@ -74,8 +74,8 @@ Plans:
   4. On bot startup, the log shows the list of monitored symbols and their loaded high-water marks; on shutdown, a final log entry is written
 **Plans:** 2 plans
 Plans:
-- [ ] 04-01-PLAN.md — TelegramNotifier 모듈 신설 + Settings Telegram 필드 + 의존성 추가 (Wave 1)
-- [ ] 04-02-PLAN.md — OrderExecutor 통합 ([TRADE] 로그, notifier 주입) + 종료 로그 + main.py 와이어링 (Wave 2)
+- [x] 04-01-PLAN.md — TelegramNotifier 모듈 신설 + Settings Telegram 필드 + 의존성 추가 (Wave 1)
+- [x] 04-02-PLAN.md — OrderExecutor 통합 ([TRADE] 로그, notifier 주입) + 종료 로그 + main.py 와이어링 (Wave 2)
 
 ---
 

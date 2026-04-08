@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 03-02-PLAN.md (OrderExecutor 통합 — scheduler 및 main.py 파이프라인 완성)
-last_updated: "2026-04-06T16:29:34.354Z"
-last_activity: 2026-04-06
+status: complete
+stopped_at: Completed 04-02-PLAN.md (TelegramNotifier 통합 — OrderExecutor, scheduler, main.py 완성)
+last_updated: "2026-04-08T00:00:00.000Z"
+last_activity: 2026-04-08
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 5
-  percent: 0
+  completed_phases: 4
+  total_plans: 10
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -21,83 +21,42 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** 조건 충족 시 사람의 개입 없이 즉시 자동 매도하여 손실을 방어한다.
-**Current focus:** Phase 03 — order-execution
+**Current focus:** Phase 04 — notifications-and-operational-polish (COMPLETE)
 
 ## Current Position
 
-Phase: 03 (order-execution) — EXECUTING
+Phase: 04 (notifications-and-operational-polish) — COMPLETE
 Plan: 2 of 2
-Status: Phase complete — ready for verification
-Last activity: 2026-04-06
+Status: All phases complete — v1.0 milestone ready for verification
+Last activity: 2026-04-08
 
-Progress: [░░░░░░░░░░] 0%
-
-## Performance Metrics
-
-**Velocity:**
-
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 1. Foundation and KIS API Connectivity | 0 | - | - |
-| 2. Trailing Stop Engine | 0 | - | - |
-| 3. Order Execution | 0 | - | - |
-| 4. Notifications and Operational Polish | 0 | - | - |
-
-**Recent Trend:**
-
-- Last 5 plans: none yet
-- Trend: -
-
-*Updated after each plan completion*
-| Phase 01-foundation-and-kis-api-connectivity P01 | 5 | 2 tasks | 15 files |
-| Phase 01-foundation-and-kis-api-connectivity P02 | 4 | 2 tasks | 7 files |
-| Phase 02-trailing-stop-engine P01 | 3 | 1 tasks | 6 files |
-| Phase 02 P02 | 129 | 2 tasks | 5 files |
-| Phase 03-order-execution P01 | 8 | 1 tasks | 3 files |
-| Phase 03-order-execution P02 | 2 | 2 tasks | 3 files |
+Progress: [██████████] 100%
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
 - Roadmap: 4-phase structure derived from dependency graph (auth+config first, engine second, orders third, notifications last)
-- Research: `python-kis 4.x` is recommended KIS wrapper — verify on PyPI before pinning in Phase 1
 - Research: Telegram chosen over KakaoTalk for notifications (no 30-day OAuth refresh)
-- [Phase 01-foundation-and-kis-api-connectivity]: python-kis 4.x 표기는 버전 체계 오류 — 실제 최신 버전 2.1.6 사용 (PyPI 확인)
-- [Phase 01-foundation-and-kis-api-connectivity]: exchange_calendars XKRX로 KRX 공휴일 오프라인 판정 채택 — httpx+KIS API보다 신뢰성 높음
-- [Phase 01-foundation-and-kis-api-connectivity]: PyKis 2.1.6 가상계좌: virtual=True 없음, virtual_id/virtual_appkey/virtual_secretkey kwargs로 활성화
-- [Phase 01-foundation-and-kis-api-connectivity]: KisAPIError 로깅: getattr(e, 'rt_cd', None) 패턴으로 mock과 실제 객체 모두 안전하게 처리
-- [Phase 02-trailing-stop-engine]: warm=False guard: 첫 tick에서는 SellSignal 없음 — 재시작 직후 오탐 방지
-- [Phase 02-trailing-stop-engine]: peak_updated 플래그: 고점 갱신 시에만 StateStore.save() 호출 — 매 tick I/O 없음
-- [Phase 02]: KIS_MOCK=true 시 DRY_RUN 자동 강제 — 모의투자 환경에서 실매도는 의미 없으므로 model_validator에서 강제
-- [Phase 02]: 엔진 상태(peak/warm)를 세션 시작 시 로깅 — 재시작 후 state.json 복원 확인용
-- [Phase 03-order-execution]: SELL_PENDING은 인-메모리 set[str]로 구현 — APScheduler BlockingScheduler 단일 스레드이므로 Lock 불필요
-- [Phase 03-order-execution]: dry_run은 execute() 진입점에서 즉시 차단 — _pending에 추가하지 않음
-- [Phase 03-order-execution]: 모든 종료 경로에서 _pending.discard() 보장 — 영구 차단 방지 (실패/잔고없음/타임아웃)
-- [Phase 03-order-execution]: executor는 create_poll_session/start_scheduler 시그니처에 명시적 파라미터로 전달 — 전역 상태나 클로저 캡처 없음
+- [Phase 01]: python-kis 실제 최신 버전 2.1.6 사용 (PyPI 확인)
+- [Phase 01]: exchange_calendars XKRX로 KRX 공휴일 오프라인 판정 채택
+- [Phase 02]: KIS_MOCK=true 시 DRY_RUN 자동 강제
+- [Phase 03]: SELL_PENDING은 인-메모리 set[str]로 구현 — 단일 스레드이므로 Lock 불필요
+- [Phase 04]: TELEGRAM_BOT_TOKEN/CHAT_ID는 선택적 필드 — 미설정 시 알림 없이 정상 실행
+- [Phase 04]: notify()는 acc.sell() 직후, _confirm_fill() 이전에 daemon Thread로 전송
+- [Phase 04]: [TRADE] 마커로 거래 이력을 logs/mutrade.log에 통합 기록
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
-- Phase 1: Verify `python-kis 4.x` is still actively maintained before committing to it (`pip index versions python-kis`, check GitHub last commit)
-- Phase 1: Confirm KIS OAuth2 endpoint path and token TTL against current KIS Developers portal
-- Phase 1: Confirm real vs. mock account rate limits before writing polling loop
 - Phase 3: Confirm `tr_id` values for production and paper trading sell orders before any live testing
+- Telegram: TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID를 .env에 설정해야 실제 알림 동작
 
 ## Session Continuity
 
-Last session: 2026-04-06T16:29:34.352Z
-Stopped at: Completed 03-02-PLAN.md (OrderExecutor 통합 — scheduler 및 main.py 파이프라인 완성)
+Last session: 2026-04-08T00:00:00.000Z
+Stopped at: Phase 04 complete — v1.0 milestone all 4 phases done
 Resume file: None
