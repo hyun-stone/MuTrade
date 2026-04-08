@@ -27,6 +27,7 @@ from mutrade.monitor.scheduler import start_scheduler
 from mutrade.engine.state_store import StateStore
 from mutrade.engine.trailing_stop import TrailingStopEngine
 from mutrade.executor.order_executor import OrderExecutor
+from mutrade.notifier.telegram import TelegramNotifier
 
 
 def main() -> None:
@@ -79,8 +80,18 @@ def main() -> None:
         settings.dry_run, len(engine.states),
     )
 
+    # Telegram 알림기 초기화 (D-01: 둘 다 없으면 None 반환 — 알림 없이 정상 실행)
+    notifier = TelegramNotifier(
+        token=settings.telegram_bot_token,
+        chat_id=settings.telegram_chat_id,
+    )
+    if settings.telegram_bot_token:
+        logger.info("Telegram 알림 활성화. chat_id={}", settings.telegram_chat_id)
+    else:
+        logger.info("Telegram 알림 비활성화 (TELEGRAM_BOT_TOKEN 미설정).")
+
     # 매도 주문 실행기 초기화
-    executor = OrderExecutor(kis=kis, dry_run=settings.dry_run)
+    executor = OrderExecutor(kis=kis, dry_run=settings.dry_run, notifier=notifier)
     logger.info(
         "Order executor initialized. dry_run={}",
         settings.dry_run,

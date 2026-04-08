@@ -150,3 +150,11 @@ def start_scheduler(
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
         logger.info("Scheduler stopped by user.")
+        # NOTIF-04: 종료 시 모니터링 종목 및 고점 상태 로깅
+        logger.info("=== 종료 시 모니터링 상태 ===")
+        for code, state in engine.states.items():
+            logger.info(
+                "  {} peak={:,.0f} warm={}",
+                code, state.peak_price, state.warm,
+            )
+        logger.info("MuTrade 봇 종료 완료.")

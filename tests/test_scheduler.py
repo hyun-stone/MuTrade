@@ -349,3 +349,40 @@ class TestCreatePollSession:
 
         # dry_run=True이므로 executor.execute는 호출되지 않아야 함
         executor.execute.assert_not_called()
+
+
+class TestShutdownLog:
+    """NOTIF-04 — 종료 시 engine.states 순회 로깅 테스트."""
+
+    def test_shutdown_logs_state(self):
+        """KeyboardInterrupt 종료 시 engine.states 전체를 순회하며 로그를 출력한다."""
+        from mutrade.monitor.scheduler import start_scheduler
+        from mutrade.engine.models import SymbolState
+
+        kis = MagicMock()
+        config = make_config()
+        engine = make_engine_mock()
+        executor = make_executor_mock()
+
+        # engine.states에 2개 종목 설정
+        engine.states = {
+            "005930": SymbolState(code="005930", peak_price=80000.0, warm=True),
+            "000660": SymbolState(code="000660", peak_price=150000.0, warm=False),
+        }
+
+        info_calls = []
+
+        with patch("mutrade.monitor.scheduler.BlockingScheduler") as mock_sched_cls, \
+             patch("mutrade.monitor.scheduler.logger") as mock_logger:
+            mock_sched = MagicMock()
+            mock_sched_cls.return_value = mock_sched
+            # scheduler.start()가 KeyboardInterrupt를 발생시키도록 설정
+            mock_sched.start.side_effect = KeyboardInterrupt()
+            mock_logger.info.side_effect = lambda msg, *a, **kw: info_calls.append(str(msg) + str(a))
+
+            start_scheduler(kis, config, engine, executor)
+
+        # engine.states의 2개 종목이 모두 로깅되어야 함
+        combined = " ".join(info_calls)
+        assert "005930" in combined, f"005930 not in shutdown logs: {info_calls}"
+        assert "000660" in combined, f"000660 not in shutdown logs: {info_calls}"
