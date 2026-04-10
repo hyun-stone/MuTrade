@@ -31,7 +31,7 @@ def create_kis_client(settings: Settings) -> PyKis:
         logger.info("Initializing PyKis in VIRTUAL (mock) mode")
         return PyKis(
             id=settings.kis_id,
-            account=settings.kis_account,
+            account=settings.kis_virtual_account,
             appkey=settings.kis_appkey,
             secretkey=settings.kis_secretkey,
             virtual_id=settings.kis_virtual_id,

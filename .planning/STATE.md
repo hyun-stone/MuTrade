@@ -46,8 +46,14 @@ None.
 - Phase 3: Confirm `tr_id` values for production and paper trading sell orders before any live testing
 - Telegram: TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID를 .env에 설정해야 실제 알림 동작
 
+## Quick Tasks Completed
+
+| ID | Task | Date | Tests |
+|----|------|------|-------|
+| 260410-1dv | client.py: KIS_MOCK=true 시 account=kis_virtual_account 사용 (INVALID_CHECK_ACNO 수정) | 2026-04-10 | 80 passed |
+
 ## Session Continuity
 
-Last session: 2026-04-08
-Stopped at: v1.0 milestone complete and archived
+Last session: 2026-04-10
+Stopped at: quick task 260410-1dv 완료 — client.py bug fix (account 파라미터 수정)
 Resume file: None
