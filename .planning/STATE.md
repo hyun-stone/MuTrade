@@ -51,9 +51,10 @@ None.
 | ID | Task | Date | Tests |
 |----|------|------|-------|
 | 260410-1dv | client.py: KIS_MOCK=true 시 account=kis_virtual_account 사용 (INVALID_CHECK_ACNO 수정) | 2026-04-10 | 80 passed |
+| 260410-sib | TelegramListener: /status 명령 수신 — 종목별 현재가·고점·하락률 응답 | 2026-04-10 | 86 passed |
 
 ## Session Continuity
 
 Last session: 2026-04-10
-Stopped at: quick task 260410-1dv 완료 — client.py bug fix (account 파라미터 수정)
+Stopped at: quick task 260410-sib 완료 — TelegramListener 구현 및 main.py 통합
 Resume file: None
