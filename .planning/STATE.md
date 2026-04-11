@@ -1,35 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: MVP
-status: shipped
-stopped_at: v1.0 milestone archived — all 4 phases, 8 plans complete
-last_updated: "2026-04-08T00:00:00.000Z"
-last_activity: 2026-04-08
+milestone: v1.1
+milestone_name: Admin Dashboard
+status: active
+stopped_at: ""
+last_updated: "2026-04-12T00:00:00.000Z"
+last_activity: 2026-04-12
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-08 after v1.0 milestone)
+See: .planning/PROJECT.md (updated 2026-04-12 — v1.1 Admin Dashboard)
 
 **Core value:** 조건 충족 시 사람의 개입 없이 즉시 자동 매도하여 손실을 방어한다.
-**Current focus:** v1.0 shipped — planning next milestone
+**Current focus:** v1.1 Admin Dashboard — 관리자 웹 UI 구현
 
 ## Current Position
 
-Phase: All complete (v1.0 MVP shipped)
-Status: ✅ v1.0 archived — ready for `/gsd-new-milestone`
-Last activity: 2026-04-08
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-12 — Milestone v1.1 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 

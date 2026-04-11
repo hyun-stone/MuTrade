@@ -8,6 +8,16 @@
 
 조건 충족 시 사람의 개입 없이 즉시 자동 매도하여 손실을 방어한다.
 
+## Current Milestone: v1.1 Admin Dashboard
+
+**Goal:** FastAPI + HTML/JS + WebSocket 기반 관리자 웹 UI를 추가하여 봇 현황 조회, 제어, 거래 이력 확인, 설정 변경을 브라우저에서 수행
+
+**Target features:**
+- 현황 조회 — 모니터링 종목별 현재가·고점·하락률 실시간 표시 (WebSocket)
+- 봇 제어 — 봇 시작/중지, 종목 추가/제거
+- 거래 이력 — 로그 [TRADE] 마커 파싱 → 매도 이력 테이블
+- 설정 변경 — config.toml 임계값 등 UI에서 직접 수정
+
 ## Current State
 
 **Shipped:** v1.0 MVP (2026-04-08)
@@ -42,7 +52,14 @@
 - ✓ [TRADE] 마커로 거래 이력 로그 기록 — v1.0
 - ✓ 봇 시작·종료 시 모니터링 종목·고점 로깅 — v1.0
 
-### Active (v1.1+)
+### Active (v1.1)
+
+- [ ] 관리자 웹 UI — 현황 조회 (종목별 현재가·고점·하락률 WebSocket 실시간)
+- [ ] 관리자 웹 UI — 봇 제어 (시작/중지, 종목 추가/제거)
+- [ ] 관리자 웹 UI — 거래 이력 ([TRADE] 로그 마커 파싱 테이블)
+- [ ] 관리자 웹 UI — 설정 변경 (config.toml 임계값 등 UI 수정)
+
+### Future (v1.2+)
 
 - [ ] 프로덕션 `tr_id` 검증 및 실거래 end-to-end 테스트
 - [ ] WebSocket 실시간 시세 수신 (폴링 대체)
@@ -100,4 +117,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-08 after v1.0 milestone*
+*Last updated: 2026-04-12 — v1.1 Admin Dashboard milestone started*
