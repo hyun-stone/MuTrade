@@ -28,7 +28,6 @@ from mutrade.engine.state_store import StateStore
 from mutrade.engine.trailing_stop import TrailingStopEngine
 from mutrade.executor.order_executor import OrderExecutor
 from mutrade.notifier.telegram import TelegramNotifier
-from mutrade.notifier.telegram_listener import TelegramListener
 
 
 def main() -> None:
@@ -97,21 +96,6 @@ def main() -> None:
         "Order executor initialized. dry_run={}",
         settings.dry_run,
     )
-
-    # Telegram /status 수신 리스너 (token/chat_id 없으면 no-op)
-    listener = TelegramListener(
-        token=settings.telegram_bot_token,
-        chat_id=settings.telegram_chat_id,
-    )
-    listener.start(
-        engine=engine,
-        kis=kis,
-        symbols={s.code: s for s in config.symbols},
-        dry_run=settings.dry_run,
-        kis_mock=settings.kis_mock,
-    )
-    if settings.telegram_bot_token:
-        logger.info("Telegram /status 리스너 활성화.")
 
     # 스케줄러 시작 (블로킹 — 종료까지 반환 안 됨)
     start_scheduler(kis, config, engine, executor)
