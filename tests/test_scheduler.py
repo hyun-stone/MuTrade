@@ -438,10 +438,11 @@ class TestHubIntegration:
 
     def test_hub_push_snapshot_called_after_poll(self):
         """hub 전달 시 폴링 후 hub.push_snapshot(engine.states)이 호출되어야 한다."""
+        from mutrade.engine.models import SymbolState
         kis = MagicMock()
         config, mock_now = self._make_trading_session_mocks()
         engine = make_engine_mock()
-        engine.states = {"005930": {"code": "005930", "peak_price": 75000.0, "warm": True}}
+        engine.states = {"005930": SymbolState(code="005930", peak_price=75000.0, warm=True)}
         executor = make_executor_mock()
         hub = MagicMock()
         hub.is_stop_requested.return_value = False
