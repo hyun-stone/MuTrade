@@ -8,6 +8,16 @@
 
 조건 충족 시 사람의 개입 없이 즉시 자동 매도하여 손실을 방어한다.
 
+## Current Milestone: v1.1 Admin UI
+
+**Goal:** v1.0 봇을 웹 브라우저에서 모니터링하고 제어할 수 있는 FastAPI 기반 어드민 대시보드 구현
+
+**Target features:**
+- 모니터링 대시보드 — 각 종목 현재가/고점/하락률/SELL_PENDING 실시간 표시
+- 봇 제어 — 시작/중지, 드라이런 토글
+- 거래 이력 — [TRADE] 로그 파싱 후 목록 표시
+- config.toml 전체 편집 — UI에서 직접 수정 및 저장
+
 ## Current State
 
 **Shipped:** v1.0 MVP (2026-04-08)
@@ -42,7 +52,14 @@
 - ✓ [TRADE] 마커로 거래 이력 로그 기록 — v1.0
 - ✓ 봇 시작·종료 시 모니터링 종목·고점 로깅 — v1.0
 
-### Active (v1.1+)
+### Active (v1.1)
+
+- [ ] 모니터링 대시보드 — 각 종목 현재가/고점/하락률/SELL_PENDING 실시간 표시
+- [ ] 봇 제어 — 시작/중지, 드라이런 토글
+- [ ] 거래 이력 — [TRADE] 로그 파싱 후 목록 표시
+- [ ] config.toml 전체 편집 — UI에서 직접 수정 및 저장
+
+### Future (v1.2+)
 
 - [ ] 프로덕션 `tr_id` 검증 및 실거래 end-to-end 테스트
 - [ ] WebSocket 실시간 시세 수신 (폴링 대체)
@@ -100,4 +117,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-08 after v1.0 milestone*
+*Last updated: 2026-04-12 — v1.1 Admin UI milestone started*
