@@ -10,7 +10,9 @@ MuTrade 봇 엔트리포인트.
   4. PyKis 클라이언트 초기화 (keep_token=True — 24h 토큰 자동 갱신)
   5. TrailingStopEngine 초기화 (StateStore에서 고점 복원)
   6. OrderExecutor 초기화 (매도 주문 실행기)
-  7. APScheduler 시작 (블로킹 — Mon-Fri 09:00 KST 자동 폴링)
+  7. BotStateHub 초기화 (봇 ↔ FastAPI 브릿지)
+  8. BackgroundScheduler 시작 (비블로킹 — 별도 스레드)
+  9. uvicorn.run() 시작 (블로킹 — FastAPI 메인 루프)
 
 Usage:
   python mutrade/main.py
@@ -18,6 +20,7 @@ Usage:
 """
 import sys
 
+import uvicorn
 from loguru import logger
 
 from mutrade.settings import Settings
@@ -28,10 +31,12 @@ from mutrade.engine.state_store import StateStore
 from mutrade.engine.trailing_stop import TrailingStopEngine
 from mutrade.executor.order_executor import OrderExecutor
 from mutrade.notifier.telegram import TelegramNotifier
+from mutrade.admin.hub import BotStateHub
+from mutrade.admin.app import create_app
 
 
 def main() -> None:
-    """MuTrade 봇을 초기화하고 스케줄러를 시작한다."""
+    """MuTrade 봇을 초기화하고 uvicorn + BackgroundScheduler를 시작한다."""
     # loguru 핸들러 재설정
     logger.remove()  # 기본 stderr 핸들러 제거
     logger.add(
@@ -97,8 +102,18 @@ def main() -> None:
         settings.dry_run,
     )
 
-    # 스케줄러 시작 (블로킹 — 종료까지 반환 안 됨)
-    start_scheduler(kis, config, engine, executor)
+    # BotStateHub 초기화 (봇 ↔ FastAPI 브릿지)
+    hub = BotStateHub()
+
+    # BackgroundScheduler 시작 (비블로킹 — 별도 스레드)
+    scheduler = start_scheduler(kis, config, engine, executor, hub=hub)
+
+    # FastAPI 앱 생성 (hub, scheduler 주입 — Phase 6~7에서 라우트 추가)
+    app = create_app(hub=hub, scheduler=scheduler, engine=engine, config=config)
+
+    # uvicorn이 메인 스레드 담당 (블로킹 — 프로세스 종료까지 실행)
+    logger.info("Starting uvicorn on http://127.0.0.1:8000 ...")
+    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
 
 
 if __name__ == "__main__":
