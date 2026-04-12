@@ -21,7 +21,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
 
 ### v1.1 Admin Dashboard (Phases 5-8)
 
-- [ ] Phase 5: Process Architecture Migration (0/0 plans)
+- [ ] Phase 5: Process Architecture Migration (0/2 plans)
 - [ ] Phase 6: Real-time Dashboard (0/0 plans)
 - [ ] Phase 7: Bot Control and Trade History (0/0 plans)
 - [ ] Phase 8: Config Editor (0/0 plans)
@@ -35,6 +35,12 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
 **Goal:** FastAPI/uvicorn이 메인 스레드를 차지할 수 있도록 APScheduler를 BackgroundScheduler로 전환하고, 봇 폴링 스레드와 FastAPI asyncio 루프 사이의 상태 브릿지(BotStateHub)를 구축한다.
 
 **Requirements:** (인프라 단계 — 직접 사용자 요구사항 없음, Phase 6~8의 전제 조건)
+
+**Plans: 2 plans**
+
+Plans:
+- [ ] 05-01-PLAN.md — BotStateHub + FastAPI 최소 앱 (TDD)
+- [ ] 05-02-PLAN.md — BackgroundScheduler 전환 + main.py uvicorn 진입점 재구성
 
 **Key deliverables:**
 - `mutrade/admin/hub.py` — `BotStateHub` (threading.RLock + asyncio.Queue + threading.Event)
@@ -119,7 +125,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
 | 2. Trailing Stop Engine | v1.0 | 2/2 | Complete | 2026-04-06 |
 | 3. Order Execution | v1.0 | 2/2 | Complete | 2026-04-08 |
 | 4. Notifications and Operational Polish | v1.0 | 2/2 | Complete | 2026-04-08 |
-| 5. Process Architecture Migration | v1.1 | 0/— | Not started | — |
+| 5. Process Architecture Migration | v1.1 | 0/2 | Not started | — |
 | 6. Real-time Dashboard | v1.1 | 0/— | Not started | — |
 | 7. Bot Control and Trade History | v1.1 | 0/— | Not started | — |
 | 8. Config Editor | v1.1 | 0/— | Not started | — |
