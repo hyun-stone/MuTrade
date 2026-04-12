@@ -53,7 +53,29 @@
 
 ## Traceability
 
-*Filled by roadmapper*
-
 | REQ-ID | Phase | Category |
 |--------|-------|----------|
+| INFRA-01 | Phase 6 | Infrastructure |
+| INFRA-02 | Phase 6 | Infrastructure |
+| DASH-01 | Phase 6 | Dashboard |
+| DASH-02 | Phase 6 | Dashboard |
+| DASH-03 | Phase 6 | Dashboard |
+| CTRL-01 | Phase 7 | Control |
+| CTRL-02 | Phase 7 | Control |
+| CTRL-03 | Phase 7 | Control |
+| CTRL-04 | Phase 7 | Control |
+| HIST-01 | Phase 8 | History |
+| CONF-01 | Phase 9 | Config |
+| CONF-02 | Phase 9 | Config |
+| INFRA-01 | Phase 5 | Infrastructure |
+| INFRA-02 | Phase 5 | Infrastructure |
+| DASH-01 | Phase 6 | Dashboard |
+| DASH-02 | Phase 6 | Dashboard |
+| DASH-03 | Phase 6 | Dashboard |
+| CTRL-01 | Phase 7 | Control |
+| CTRL-02 | Phase 7 | Control |
+| CTRL-03 | Phase 7 | Control |
+| CTRL-04 | Phase 7 | Control |
+| HIST-01 | Phase 8 | History |
+| CONF-01 | Phase 9 | Config |
+| CONF-02 | Phase 9 | Config |

@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Admin UI
 status: planning
-stopped_at: Milestone v1.1 started — defining requirements
+stopped_at: Roadmap created — ready to plan Phase 5
 last_updated: "2026-04-12T00:00:00.000Z"
 last_activity: 2026-04-12
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-12 for v1.1 milestone)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 6 (Not started — Phase 5 already complete)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-12 — Milestone v1.1 started
+Status: Roadmap created, ready to plan
+Last activity: 2026-04-12 — Roadmap created for v1.1 (Phase 5 완료 확인)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -46,9 +46,11 @@ None.
 
 - Phase 3 (v1.0): `tr_id` 값 프로덕션/모의투자 구분 확인 필요 (KIS Developers 포털) — v1.2로 이월
 - Telegram: TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID를 .env에 설정해야 실제 알림 동작
+- Phase 5 시작 전: `OrderExecutor._pending` 필드명 및 접근 가능성 확인 필요 (SELL_PENDING 노출 전략)
+- Phase 7 시작 전: `scheduler.trigger_job()` vs `.get_job("market_poll").modify()` — APScheduler 3.11.2 API 확인 필요
 
 ## Session Continuity
 
 Last session: 2026-04-12
-Stopped at: v1.1 milestone initialized, requirements 정의 중
+Stopped at: v1.1 roadmap created (5 phases, 12 requirements mapped)
 Resume file: None
