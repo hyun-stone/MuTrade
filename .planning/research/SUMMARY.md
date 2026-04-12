@@ -307,3 +307,64 @@ Items requiring verification against current KIS Developers portal before implem
 ---
 *Research completed: 2026-04-06*
 *Ready for roadmap: yes*
+
+---
+
+# v1.1 Admin Dashboard Research Summary
+
+*Synthesized: 2026-04-12*
+*Confidence: HIGH (코드베이스 직접 분석 기반)*
+
+## Executive Summary
+
+동일 프로세스 내 FastAPI 통합. FastAPI/uvicorn이 메인 스레드를 담당하고 APScheduler `BackgroundScheduler`가 별도 스레드에서 폴링 잡을 실행하는 구조로 전환이 핵심.
+
+## Stack Additions
+
+| 패키지 | 버전 | 목적 |
+|--------|------|------|
+| `fastapi` | 0.135.3 | REST API + WebSocket |
+| `uvicorn[standard]` | 0.44.0 | ASGI 서버 (websockets 포함) |
+| `jinja2` | 3.1.6 | HTML 템플릿 |
+| `python-multipart` | 0.0.26 | config 폼 제출 |
+
+Chart.js 4.5.1은 CDN으로 추가. React/Vue/Redis/SQLite 불필요.
+
+## Feature Table Stakes
+
+- 실시간 모니터링 뷰: 종목별 현재가/고점/하락률/임계값/상태뱃지 + WebSocket 실시간 푸시
+- 봇 제어 패널: RUNNING/STOPPED 표시, 시작/중지, 드라이런 상시 배너
+- 거래 이력: `[TRADE]` 로그 파싱, 최신순, DRY-RUN/LIVE 구분
+- 설정 편집기: config.toml 읽기/쓰기, Pydantic 검증, 원자적 저장
+
+**Anti-Features:** 주문 실행 UI, 민감 정보 편집 UI, 실시간 캔들차트
+
+## Architecture
+
+신규 컴포넌트: `BotStateHub`, `ConnectionManager`, `TradeLogReader`, `ConfigEditor`, FastAPI app, `static/index.html`
+
+수정 대상: `monitor/scheduler.py` (BlockingScheduler→BackgroundScheduler), `mutrade/main.py` (uvicorn.run()으로 마무리)
+
+수정 없음: `TrailingStopEngine`, `StateStore`, `OrderExecutor`, `TelegramListener`
+
+## Critical Pitfalls
+
+1. **BlockingScheduler + uvicorn 충돌** — BackgroundScheduler 교체가 Phase 1 최우선
+2. **스레드-asyncio 경계 상태 불안전** — threading.RLock 필수
+3. **크로스스레드 asyncio 호출** — loop.call_soon_threadsafe() 패턴 필수
+4. **config.toml 파일 손상 + 엔진 불일치** — 원자적 쓰기와 엔진 갱신 동시 처리
+5. **봇 중지 경쟁 조건** — time.sleep → stop_event.wait(timeout=N) 교체
+6. **로그 파싱 동기 I/O** — asyncio.to_thread() 사용 필수
+
+## Recommended Phase Order
+
+| Phase | 내용 |
+|-------|------|
+| 5 | 프로세스 아키텍처 전환 (BotStateHub + BackgroundScheduler) |
+| 6 | 실시간 상태 조회 (WebSocket 현황 뷰) |
+| 7 | 봇 제어 패널 + 거래 이력 |
+| 8 | 설정 편집기 |
+
+---
+*Research completed: 2026-04-12*
+*Ready for roadmap: yes*

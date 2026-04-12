@@ -2,34 +2,259 @@
 
 **Project:** MuTrade — 자동 트레일링 스탑 트레이딩 봇
 **Domain:** Personal automated stock trading bot (Korea Investment & Securities / KIS API)
-**Researched:** 2026-04-06
-**Knowledge cutoff:** August 2025 (web search unavailable — all findings from training data; see Confidence Notes)
+**Researched:** 2026-04-06 (v1.0), updated 2026-04-12 (v1.1 Admin Dashboard 추가)
+**Knowledge cutoff:** August 2025 (web search 병행 사용 — v1.1 섹션은 웹 검색으로 버전 검증됨)
 
 ---
 
-## Recommended Stack
+## v1.1 Admin Dashboard — 신규 스택 추가
+
+> 이 섹션은 v1.1 Admin Dashboard 마일스톤에 필요한 라이브러리만 다룬다.
+> 기존 v1.0 스택(python-kis, APScheduler, loguru, pydantic-settings, Telegram)은 재연구하지 않는다.
+
+### 핵심 결정: 프로세스 아키텍처
+
+**결론: 단일 프로세스 — FastAPI(uvicorn) + APScheduler BackgroundScheduler를 같은 프로세스에서 실행**
+
+현재 코드는 `BlockingScheduler`를 사용해 메인 스레드를 점유한다(`start_scheduler`가 블로킹 반환). FastAPI와 공존하려면 스케줄러를 백그라운드 스레드로 옮겨야 한다. 두 가지 방법이 있다:
+
+| 방법 | 설명 | 선택 여부 |
+|------|------|-----------|
+| **BackgroundScheduler** | 별도 스레드에서 실행, APScheduler 3.x의 기본 방식 | **채택** |
+| AsyncIOScheduler | uvicorn의 event loop 위에서 실행 | 기존 폴링 루프가 `time.sleep()` 사용 — async 아님, 변환 비용 큼 |
+| 별도 프로세스 | FastAPI 프로세스 + 봇 프로세스 분리 | IPC 복잡도 증가, 개인용 봇에 과도 |
+
+**왜 BackgroundScheduler인가:**
+- 기존 `scheduler.py`의 `time.sleep()` 기반 폴링 루프를 그대로 유지할 수 있다
+- FastAPI는 uvicorn asyncio event loop 위에서 실행
+- 두 컨텍스트는 Python 객체(엔진, 상태)를 직접 공유 가능 (GIL 하에서 thread-safe read는 문제없음)
+- 쓰기 경합이 있는 상태(`engine.states`, `state.json`)는 `threading.Lock`으로 보호
+
+**migration 요약:**
+```
+기존: BlockingScheduler.start() → 메인 스레드 점유
+변경: BackgroundScheduler.start() → 백그라운드 스레드
+      uvicorn.run(app) → 메인 스레드 (FastAPI)
+```
+
+---
+
+### Web Framework
+
+| 라이브러리 | 버전 | 목적 | 이유 |
+|-----------|------|------|------|
+| `fastapi` | 0.135.3 | HTTP REST API + WebSocket 엔드포인트 | WebSocket 내장 지원, Starlette 기반, 타입 검증 자동화. 개인용 대시보드에 딱 맞는 크기. |
+| `uvicorn[standard]` | 0.44.0 | ASGI 서버 | FastAPI 공식 권장 서버. `[standard]`는 `websockets` + `httptools` 포함. |
+| `starlette` | (fastapi 의존성, 자동 설치) | StaticFiles, WebSocket 기반 | fastapi가 요구하는 버전 자동 설치됨, 직접 명시 불필요. |
+
+**설치:**
+```bash
+pip install "fastapi==0.135.3" "uvicorn[standard]==0.44.0"
+```
+
+`uvicorn[standard]`에 포함되는 것: `websockets`, `httptools`, `uvloop`(Linux/macOS), `watchfiles`(개발용 reload)
+
+**신뢰도: HIGH** — PyPI에서 2026-04-01(fastapi), 2026-04-06(uvicorn) 릴리즈 확인됨.
+
+---
+
+### 템플릿 및 정적 파일 서빙
+
+| 라이브러리 | 버전 | 목적 | 이유 |
+|-----------|------|------|------|
+| `jinja2` | 3.1.6 | HTML 템플릿 렌더링 | FastAPI 공식 지원 템플릿 엔진. 빌드 단계 없이 서버 사이드 렌더링. |
+
+`StaticFiles`는 Starlette 내장 — 추가 설치 불필요.
+
+```python
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="mutrade/dashboard/static"), name="static")
+templates = Jinja2Templates(directory="mutrade/dashboard/templates")
+```
+
+**폴더 구조 권고:**
+```
+mutrade/
+  dashboard/
+    __init__.py
+    app.py          ← FastAPI app 객체
+    routes.py       ← REST + WebSocket 라우터
+    static/
+      main.js
+      style.css
+    templates/
+      index.html
+```
+
+**신뢰도: HIGH** — Jinja2 3.1.6 PyPI 확인됨(2025-03-05 릴리즈). FastAPI 공식 문서 패턴.
+
+---
+
+### WebSocket 브로드캐스트 패턴
+
+FastAPI는 WebSocket을 네이티브 지원한다. 브라우저 탭 하나~몇 개를 대상으로 하는 개인용 대시보드에는 Redis 없이 인메모리 `ConnectionManager`로 충분하다.
+
+```python
+# mutrade/dashboard/connection_manager.py
+import asyncio
+from fastapi import WebSocket
+
+class ConnectionManager:
+    def __init__(self):
+        self.active: list[WebSocket] = []
+
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        self.active.append(ws)
+
+    def disconnect(self, ws: WebSocket):
+        self.active.remove(ws)
+
+    async def broadcast(self, data: dict):
+        dead = []
+        for ws in self.active:
+            try:
+                await ws.send_json(data)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            self.active.remove(ws)
+```
+
+**봇 엔진 → WebSocket 브로드캐스트 연결:**
+
+봇 폴링 루프(스레드)에서 asyncio 이벤트 루프로 데이터를 넘기려면 `asyncio.run_coroutine_threadsafe()`를 사용한다. 이것이 BackgroundScheduler 패턴의 핵심 연결 지점이다.
+
+```python
+# 스레드 내 봇 코드에서 WebSocket 브로드캐스트 호출
+loop = asyncio.get_event_loop()  # uvicorn이 사용하는 loop
+asyncio.run_coroutine_threadsafe(
+    manager.broadcast({"prices": prices_dict}),
+    loop
+)
+```
+
+**신뢰도: HIGH** — FastAPI 공식 문서 패턴, asyncio 표준 라이브러리.
+
+---
+
+### 프론트엔드 — 빌드 단계 없는 바닐라 JS
+
+Admin Dashboard는 개인용 도구다. React/Vue/Svelte 빌드 파이프라인은 불필요하다.
+
+| 라이브러리 | 버전 | 로딩 방식 | 목적 | 이유 |
+|-----------|------|----------|------|------|
+| **Chart.js** | 4.5.1 | CDN `<script>` 태그 | 가격 추이 차트 | 빌드 불필요, CDN 한 줄로 추가. 바닐라 JS에서 직접 사용 가능. 4.x는 트리 쉐이킹 지원(CDN에서는 불필요). |
+| 없음 (바닐라 JS) | — | — | UI 동적 업데이트 | 개인용 대시보드 규모에서 프레임워크 불필요. 네이티브 WebSocket API + DOM 조작으로 충분. |
+
+**Chart.js CDN:**
+```html
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+```
+
+**왜 HTMX는 추천하지 않는가:**
+HTMX는 서버 렌더링 부분 업데이트에 강하지만, WebSocket 실시간 데이터 스트림을 처리하는 방식이 바닐라 JS `WebSocket` API보다 추상화가 복잡해진다. 실시간 가격 업데이트 + Chart.js 그래프 조합에는 바닐라 JS가 더 단순하다.
+
+**신뢰도: MEDIUM** — Chart.js 4.5.1은 npmjs 기준 "6개월 전 게시"로 확인. jsDelivr CDN 가용성은 항상 HIGH.
+
+---
+
+### 폼 데이터 처리 (설정 변경 API)
+
+config.toml 수정 API에서 폼 제출을 받으려면 `python-multipart`가 필요하다.
+
+| 라이브러리 | 버전 | 목적 |
+|-----------|------|------|
+| `python-multipart` | 0.0.26 | FastAPI Form 파라미터 처리 |
+
+```bash
+pip install python-multipart==0.0.26
+```
+
+단, JSON body로 설정을 받는다면 불필요하다. HTML `<form>` 사용 시에만 필요.
+
+**신뢰도: MEDIUM** — PyPI 검색 결과에서 0.0.26(2026-04-10) 확인.
+
+---
+
+## 업데이트된 전체 의존성 목록 (v1.1)
+
+```toml
+# pyproject.toml
+[project]
+requires-python = ">=3.11"
+dependencies = [
+    # v1.0 기존
+    "python-kis==2.1.6",
+    "pydantic-settings==2.13.1",
+    "python-dotenv==1.2.2",
+    "loguru==0.7.3",
+    "APScheduler==3.11.2",
+    "exchange-calendars==4.13.2",
+    "httpx==0.28.1",
+    "python-telegram-bot==21.11.1",
+    # v1.1 신규 추가
+    "fastapi==0.135.3",
+    "uvicorn[standard]==0.44.0",
+    "jinja2==3.1.6",
+    "python-multipart==0.0.26",  # config 폼 제출 시만 필요
+]
+```
+
+**추가되지 않는 것 (이유):**
+
+| 제외 항목 | 이유 |
+|----------|------|
+| `websockets` (직접) | `uvicorn[standard]`에 포함됨 |
+| `starlette` (직접) | `fastapi` 의존성으로 자동 설치 |
+| `aiofiles` | 정적 파일은 StaticFiles가 처리, 로그 파일 읽기는 동기 I/O로 충분 |
+| Redis | 단일 사용자, 단일 프로세스 — 인메모리 ConnectionManager로 충분 |
+| React/Vue/Svelte | 빌드 파이프라인 불필요, 개인용 대시보드 |
+| SQLite/SQLAlchemy | 거래 이력은 `[TRADE]` 로그 마커 파싱으로 처리 |
+
+---
+
+## lifespan 통합 패턴
+
+FastAPI lifespan을 이용해 봇 스케줄러를 시작/종료한다. `on_event` 데코레이터는 deprecated, lifespan 방식이 현재 표준이다.
+
+```python
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+import asyncio
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup: 봇 컴포넌트 초기화 후 BackgroundScheduler 시작
+    loop = asyncio.get_event_loop()
+    app.state.loop = loop
+    app.state.engine = engine
+    app.state.manager = ConnectionManager()
+    scheduler.start()          # BackgroundScheduler — 별도 스레드
+    yield
+    # shutdown: 스케줄러 종료
+    scheduler.shutdown(wait=False)
+
+app = FastAPI(lifespan=lifespan)
+```
+
+**신뢰도: HIGH** — FastAPI 0.93+ 공식 문서 패턴, 2025-2026 가이드에서 일관되게 확인됨.
+
+---
+
+## v1.0 원본 스택 (변경 없음)
 
 ### KIS API Client
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `python-kis` | 4.x (latest on PyPI) | KIS REST + WebSocket client | The most complete community wrapper for KIS Developers API. Covers OAuth token management, account inquiry, current price, order placement, and WebSocket real-time feeds. Actively maintained by Bhban (GitHub: `Soju06/python-kis`). Type-annotated, async-compatible. |
+| `python-kis` | 2.1.6 | KIS REST + WebSocket client | The most complete community wrapper for KIS Developers API. Covers OAuth token management, account inquiry, current price, order placement, and WebSocket real-time feeds. Actively maintained by Bhban (GitHub: `Soju06/python-kis`). Type-annotated, async-compatible. |
 
-**How to install:**
-```bash
-pip install python-kis
-```
-
-**What it gives you:**
-- `PyKis` client with automatic access-token refresh (tokens expire every 24 hours under KIS OAuth 2.0)
-- `.fetch_price()` — current price of a domestic stock
-- `.create_order()` — market/limit buy/sell
-- `.fetch_balance()` — holdings query
-- WebSocket subscription for real-time price/execution notifications
-
-**Fallback (raw REST):** If `python-kis` API changes break something, the KIS REST API is plain HTTP + JSON. The underlying calls are well-documented at `https://apiportal.koreainvestment.com`. Fall back to `httpx` (async-native) or `requests` (sync) directly. This is always an option because KIS responses are straightforward JSON.
-
-**Confidence: MEDIUM** — `python-kis` (Soju06) was the dominant community library as of mid-2025. Cannot verify current PyPI version without web access. Verify with `pip index versions python-kis` before pinning.
+**Confidence: MEDIUM** — Run `pip index versions python-kis` and check GitHub `Soju06/python-kis` for last commit date and v4.x changelog
 
 ---
 
@@ -39,7 +264,7 @@ pip install python-kis
 |------------|---------|---------|-----|
 | Python | 3.11 or 3.12 | Runtime | 3.11 is the stable LTS target; 3.12 added minor perf improvements. Both are well-supported. Avoid 3.13 until ecosystem catches up. |
 
-**Confidence: HIGH** — This is stable ecosystem knowledge.
+**Confidence: HIGH**
 
 ---
 
@@ -47,16 +272,14 @@ pip install python-kis
 
 **Decision: Start with polling, add WebSocket only if latency matters.**
 
-For a trailing-stop bot that sells on a -10% drawdown from peak, the trigger latency requirement is loose — a 1–5 second poll is sufficient. A stock must drop 10% from its peak; this rarely happens in under 10 seconds. Polling is simpler, more debuggable, and avoids WebSocket reconnection complexity.
+For a trailing-stop bot that sells on a -10% drawdown from peak, the trigger latency requirement is loose — a 1–5 second poll is sufficient.
 
-**Polling approach (recommended):**
-
+**Polling approach (current):**
 ```python
 # asyncio + httpx pattern
-import asyncio
-import httpx
+import asyncio, httpx
 
-async def poll_prices(symbols: list[str], interval_seconds: float = 3.0):
+async def poll_prices(symbols, interval_seconds=3.0):
     async with httpx.AsyncClient() as client:
         while True:
             for symbol in symbols:
@@ -65,19 +288,9 @@ async def poll_prices(symbols: list[str], interval_seconds: float = 3.0):
             await asyncio.sleep(interval_seconds)
 ```
 
-Use `asyncio` for the main loop with `asyncio.sleep()` between polls. This avoids blocking and uses a single thread efficiently for a small watchlist (< 30 symbols).
+KIS rate limits: ~20 req/s. 20 symbols × 1 req/poll = 7 req/s at 3s interval — well within limits.
 
-**WebSocket approach (future upgrade):**
-
-`python-kis` exposes a WebSocket subscription that pushes real-time execution confirmations and price ticks (체결가). This is useful if you later need sub-second reaction time or want push-based sell confirmations. KIS WebSocket uses a custom binary protocol that `python-kis` handles internally.
-
-Use KIS WebSocket for:
-- Real-time execution (체결) confirmation after a sell order
-- Reducing API call count if watchlist grows beyond ~20 symbols
-
-KIS imposes rate limits: roughly 20 requests/second for REST price queries. With polling every 3 seconds per symbol, 20 symbols = ~7 req/s, well within limits.
-
-**Confidence: HIGH** — KIS rate limits and the trailing-stop latency argument are well-established.
+**Confidence: HIGH**
 
 ---
 
@@ -85,26 +298,12 @@ KIS imposes rate limits: roughly 20 requests/second for REST price queries. With
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `APScheduler` | 3.10.x | Schedule market-hours window (09:00–15:30 KST) | Mature, no daemon required, works in-process. `CronTrigger` handles the 09:00 start; a simple `datetime.now()` check handles the 15:30 stop. |
-| `systemd` (Linux) or `launchd` (macOS) | OS-provided | Keep the process alive across reboots | For always-on server deployment. On macOS dev machine, a launchd plist is sufficient. |
+| `APScheduler` | 3.11.2 | Schedule market-hours window (09:00–15:20 KST) | Mature, no daemon required, works in-process. |
+| `systemd` / `launchd` | OS-provided | Keep the process alive across reboots | |
 
-**Alternative rejected — `schedule` library:** Simpler API but lacks timezone-aware scheduling and has no async support. KST (UTC+9) handling requires explicit timezone; `APScheduler` handles this natively with `timezone='Asia/Seoul'`.
+**v1.1 변경:** `BlockingScheduler` → `BackgroundScheduler` 교체 필요 (FastAPI 메인 스레드 확보).
 
-**Alternative rejected — `cron` (system-level):** Starting/stopping the Python process via cron is fragile — token state is lost on restart, and there's no graceful shutdown handling. Keep the process running 24/7; use in-process scheduling to pause monitoring outside market hours.
-
-**Recommended pattern:**
-```python
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
-import pytz
-
-KST = pytz.timezone('Asia/Seoul')
-scheduler = AsyncIOScheduler(timezone=KST)
-scheduler.add_job(start_monitoring, CronTrigger(hour=9, minute=0, timezone=KST))
-scheduler.add_job(stop_monitoring,  CronTrigger(hour=15, minute=30, timezone=KST))
-```
-
-**Confidence: HIGH** — APScheduler 3.x is stable and the pattern is standard.
+**Confidence: HIGH**
 
 ---
 
@@ -112,32 +311,9 @@ scheduler.add_job(stop_monitoring,  CronTrigger(hour=15, minute=30, timezone=KST
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `python-telegram-bot` | 21.x | Push notifications to Telegram | Telegram Bot API is the easiest personal notification channel in 2025: free, no approval process, instant setup. Send a message on sell execution. |
-| `kakao-python-sdk` (unofficial) or direct REST | N/A | KakaoTalk notification (optional) | KakaoTalk is the PROJECT.md requirement. See notes below. |
+| `python-telegram-bot` | 21.11.1 | Push notifications | Free, instant setup, no approval needed. |
 
-**KakaoTalk — important caveats (MEDIUM confidence):**
-
-KakaoTalk "나에게 보내기" (send-to-self) uses the Kakao REST API (`https://kapi.kakao.com/v2/api/talk/memo/default/send`). It requires:
-1. A Kakao Developers app registration
-2. OAuth 2.0 user token (requires browser login to generate initially)
-3. Token refresh every 30 days (refresh token expiry)
-
-The refresh-token management adds operational complexity for a headless bot. There is no official Python SDK from Kakao — the community library `kakaotalk-api` or `python-kakao` exists but has inconsistent maintenance.
-
-**Recommendation:** Use Telegram as primary notification. It is more operationally robust for a headless bot. If KakaoTalk is a hard requirement, implement direct REST calls to the Kakao API and store refresh tokens in the secrets file — do not rely on a community SDK.
-
-**Telegram setup** (2 minutes):
-1. Create a bot via @BotFather → get `TELEGRAM_BOT_TOKEN`
-2. Get your chat ID via `https://api.telegram.org/bot<TOKEN>/getUpdates`
-3. Send message: `await bot.send_message(chat_id=CHAT_ID, text="...")`
-
-```python
-from telegram import Bot
-bot = Bot(token=os.environ["TELEGRAM_BOT_TOKEN"])
-await bot.send_message(chat_id=CHAT_ID, text=f"[MuTrade] 매도 실행: {symbol} @ {price}원")
-```
-
-**Confidence: HIGH** for Telegram. **MEDIUM** for KakaoTalk operational complexity.
+**Confidence: HIGH**
 
 ---
 
@@ -145,42 +321,11 @@ await bot.send_message(chat_id=CHAT_ID, text=f"[MuTrade] 매도 실행: {symbol}
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `python-dotenv` | 1.0.x | Load `.env` file into `os.environ` | Simple, zero-dependency pattern. Secrets in `.env` (gitignored), code reads from `os.environ`. |
-| `pydantic-settings` | 2.x | Typed config with validation | `BaseSettings` reads from env vars + `.env` and validates types at startup. Catches misconfiguration before market open. Prefer over raw `os.environ` dict access. |
-| TOML config file (`config.toml`) | stdlib (`tomllib` in 3.11+) | Per-symbol trading rules | Which symbols to monitor, custom trailing-stop percentages per symbol, optional manual peak price overrides. Use TOML (human-readable) over JSON for config that users edit. `tomllib` is stdlib in Python 3.11+, no extra install. |
+| `python-dotenv` | 1.2.2 | Load `.env` | |
+| `pydantic-settings` | 2.13.1 | Typed config | |
+| `tomllib` (stdlib) | Python 3.11+ | config.toml | |
 
-**Pattern:**
-```
-.env                    ← secrets (APP_KEY, APP_SECRET, ACCOUNT_NO, TELEGRAM_BOT_TOKEN)
-config.toml             ← trading rules (symbols, thresholds, etc.)
-settings.py             ← pydantic BaseSettings reading .env
-```
-
-```python
-# settings.py
-from pydantic_settings import BaseSettings
-
-class Settings(BaseSettings):
-    app_key: str
-    app_secret: str
-    account_no: str
-    telegram_bot_token: str
-    telegram_chat_id: str
-
-    class Config:
-        env_file = ".env"
-```
-
-```toml
-# config.toml
-[symbols]
-"005930" = { name = "삼성전자", trailing_stop_pct = 10.0, peak_override = null }
-"000660" = { name = "SK하이닉스", trailing_stop_pct = 8.0, peak_override = null }
-```
-
-**What NOT to use:** `configparser` (INI format) — no native type coercion, ugly for nested config. `yaml` — requires `PyYAML` dependency and YAML's implicit type coercion causes subtle bugs (e.g., `yes` → `True`).
-
-**Confidence: HIGH** — pydantic-settings 2.x and python-dotenv 1.x are the current standard Python pattern.
+**Confidence: HIGH**
 
 ---
 
@@ -188,78 +333,19 @@ class Settings(BaseSettings):
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `loguru` | 0.7.x | Application logging | Single-import, structured output, automatic file rotation, built-in exception formatting. Replaces stdlib `logging` boilerplate entirely. For a personal bot, `loguru` eliminates 30+ lines of handler setup. |
+| `loguru` | 0.7.3 | Application logging + [TRADE] markers | |
 
-**Configuration:**
-```python
-from loguru import logger
-
-logger.add(
-    "logs/mutrade_{time:YYYY-MM-DD}.log",
-    rotation="1 day",
-    retention="30 days",
-    level="INFO",
-    encoding="utf-8",
-)
-logger.add(
-    "logs/trades.log",           # permanent trade history
-    filter=lambda r: "TRADE" in r["extra"],
-    retention=None,
-    encoding="utf-8",
-)
-
-# Usage
-logger.info("모니터링 시작: {symbols}", symbols=watchlist)
-logger.bind(TRADE=True).info("매도 실행 | {symbol} | 가격: {price} | 수량: {qty}", ...)
-```
-
-**What NOT to use:** stdlib `logging` — verbose setup, no built-in rotation without `RotatingFileHandler` boilerplate. `structlog` — excellent for services but overkill for a personal CLI bot.
-
-**Confidence: HIGH** — loguru 0.7.x is stable and widely adopted.
+**Confidence: HIGH**
 
 ---
 
-### HTTP Client (underlying REST calls)
+### HTTP Client
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `httpx` | 0.27.x | Async HTTP for direct KIS REST calls | If bypassing `python-kis` for specific endpoints or fallback. `httpx` is async-native, has connection pooling, and is compatible with `asyncio`. Prefer over `aiohttp` for new code (simpler API). |
-| `requests` | 2.31.x | Sync HTTP (test scripts / one-offs) | Fine for debugging and one-off token generation scripts. Not for the main async loop. |
+| `httpx` | 0.28.1 | Async HTTP | |
 
-**Confidence: HIGH** — httpx 0.27.x is current and stable.
-
----
-
-### Async Runtime
-
-Use `asyncio` from stdlib. Do NOT add `trio` or `anyio` — they add complexity without benefit for this single-application use case. The bot's concurrency requirement is simple: poll N symbols in sequence with sleep intervals.
-
----
-
-## Full Dependency List
-
-```toml
-# pyproject.toml (pip-installable)
-[project]
-requires-python = ">=3.11"
-dependencies = [
-    "python-kis>=4.0",          # KIS API client — verify latest version on PyPI
-    "httpx>=0.27",              # async HTTP (fallback / direct calls)
-    "pydantic-settings>=2.0",   # typed config from .env
-    "python-dotenv>=1.0",       # .env file loading
-    "apscheduler>=3.10",        # market-hours scheduling
-    "loguru>=0.7",              # logging
-    "python-telegram-bot>=21.0",# notifications
-    "pytz>=2024.1",             # timezone handling (KST)
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.23",
-    "pytest-mock>=3.12",
-]
-```
+**Confidence: HIGH**
 
 ---
 
@@ -267,48 +353,43 @@ dev = [
 
 | Category | Avoid | Why |
 |----------|-------|-----|
-| KIS client | `mojito` (mojito2) | Older community library targeting multiple brokers. Heavier abstraction, last active maintenance was 2023, KIS API v2 changes may not be reflected. |
-| KIS client | Hand-rolling OAuth from scratch | KIS OAuth access-token refresh is non-trivial (24h expiry, needs re-auth). `python-kis` solves this. Only go raw if `python-kis` becomes unmaintained. |
-| Notification | LINE Notify | LINE Notify API was **shut down on March 31, 2025**. Do not use. |
-| Notification | Slack | Requires workspace setup; overkill for personal bot. Bot token setup is more complex than Telegram. |
-| Scheduling | `celery` | Distributed task queue — massive overkill for a single-process personal bot. Adds Redis/RabbitMQ dependency. |
-| Scheduling | `rq` (Redis Queue) | Same problem as Celery — needs Redis. |
-| Config | `yaml` / PyYAML | Implicit type coercion bugs (e.g., stock codes starting with `0` may be parsed as integers). Use TOML. |
-| Config | Hardcoded credentials | PROJECT.md constraint: all secrets via env vars or separate file. |
-| Process mgmt | `supervisord` | Outdated. Use systemd (Linux) or launchd (macOS). |
-| Database | SQLite / SQLAlchemy | Unnecessary for v1. A structured log file (loguru) is sufficient for trade history. Add SQLite only if querying trade history becomes a need. |
-| Framework | FastAPI / Flask | No web server needed. The bot is a CLI process, not a service. Adding HTTP adds attack surface and complexity. |
+| KIS client | `mojito` (mojito2) | Older, last maintained 2023 |
+| Notification | LINE Notify | Shut down March 31, 2025 |
+| Scheduling | `celery`, `rq` | Overkill, needs Redis |
+| Config | `yaml` / PyYAML | Implicit type coercion bugs |
+| Dashboard framework | React/Vue/Svelte | Build pipeline unnecessary for personal dashboard |
+| Dashboard backend | Flask | FastAPI chosen for better async/WebSocket support |
+| WebSocket scaling | Redis pub/sub | Single user, single process — in-memory sufficient |
+| DB for trade history | SQLite/SQLAlchemy | Log file parsing sufficient for v1.1 |
 
 ---
 
 ## Confidence Notes
 
-**Important:** All web search and WebFetch tools were unavailable during this research session. All findings are from training data with knowledge cutoff of August 2025. The following confidence assessments reflect training-data quality only.
-
-| Area | Confidence | Verification Action Required |
-|------|------------|------------------------------|
-| `python-kis` as primary KIS client | MEDIUM | Run `pip index versions python-kis` and check GitHub `Soju06/python-kis` for last commit date and v4.x changelog |
-| KIS REST API structure (OAuth, endpoints) | HIGH | Stable API; confirm at `https://apiportal.koreainvestment.com` |
-| LINE Notify shutdown (March 2025) | HIGH | Announced by LINE Corp well before knowledge cutoff |
-| KakaoTalk OAuth refresh complexity | HIGH | This is a known operational pain point documented in Korean dev communities |
-| Telegram Bot API stability | HIGH | Long-stable API, `python-telegram-bot` v21 released 2024 |
-| APScheduler 3.10.x API | HIGH | Stable for 3+ years |
-| loguru 0.7.x API | HIGH | Stable for 3+ years |
-| pydantic-settings 2.x | HIGH | Released 2023, API stable |
-| KIS WebSocket protocol | MEDIUM | Confirm WebSocket endpoint details in KIS Developers portal; protocol may have changed since training data |
-| KIS rate limits (~20 req/s) | MEDIUM | Verify current limits in KIS Developers API documentation |
+| Area | Confidence | 검증 방법 |
+|------|------------|----------|
+| FastAPI 0.135.3 | HIGH | WebSearch PyPI 확인 (2026-04-01 릴리즈) |
+| uvicorn 0.44.0 | HIGH | WebSearch PyPI 확인 (2026-04-06 릴리즈) |
+| Jinja2 3.1.6 | HIGH | WebSearch PyPI 확인 (2025-03-05 릴리즈) |
+| python-multipart 0.0.26 | MEDIUM | WebSearch 결과 단일 소스 |
+| Chart.js 4.5.1 | MEDIUM | npmjs "6개월 전" 게시 기준, jsDelivr CDN 직접 확인 권장 |
+| BackgroundScheduler + FastAPI 패턴 | HIGH | APScheduler 공식 문서 + 다수 2025 가이드 |
+| asyncio.run_coroutine_threadsafe 패턴 | HIGH | Python 표준 라이브러리, asyncio 문서 |
+| lifespan 통합 패턴 | HIGH | FastAPI 공식 문서 0.93+ |
 
 ---
 
 ## Sources
 
-All findings are from training data. Verification URLs:
-
-- KIS Developers portal: `https://apiportal.koreainvestment.com`
-- `python-kis` GitHub: `https://github.com/Soju06/python-kis`
-- `python-kis` PyPI: `https://pypi.org/project/python-kis/`
-- APScheduler docs: `https://apscheduler.readthedocs.io/en/3.x/`
-- pydantic-settings docs: `https://docs.pydantic.dev/latest/concepts/pydantic_settings/`
-- python-telegram-bot docs: `https://python-telegram-bot.org/`
-- loguru docs: `https://loguru.readthedocs.io/`
-- LINE Notify shutdown announcement: `https://notify-bot.line.me/closing-announce`
+- FastAPI PyPI: https://pypi.org/project/fastapi/
+- FastAPI 릴리즈 노트: https://fastapi.tiangolo.com/release-notes/
+- uvicorn PyPI: https://pypi.org/project/uvicorn/
+- FastAPI WebSocket 공식 문서: https://fastapi.tiangolo.com/advanced/websockets/
+- FastAPI 정적 파일 문서: https://fastapi.tiangolo.com/tutorial/static-files/
+- FastAPI Jinja2 템플릿: https://fastapi.tiangolo.com/advanced/templates/
+- FastAPI lifespan: https://fastapi.tiangolo.com/advanced/events/
+- APScheduler BackgroundScheduler: https://apscheduler.readthedocs.io/en/3.x/userguide.html
+- Chart.js 설치: https://www.chartjs.org/docs/latest/getting-started/installation.html
+- Chart.js jsDelivr CDN: https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js
+- python-multipart PyPI: https://pypi.org/project/python-multipart/
+- Jinja2 PyPI: https://pypi.org/project/Jinja2/
