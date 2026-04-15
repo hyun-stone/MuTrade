@@ -50,7 +50,11 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
   3. 브라우저에서 각 종목의 현재가, 고점, 하락률을 행 단위로 확인할 수 있다
   4. SELL_PENDING 중인 종목이 시각적으로 구분된다 (배지 또는 색상 강조)
   5. 페이지 새로고침 없이 WebSocket으로 데이터가 자동 갱신된다
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 06-01-PLAN.md — 인프라 버그 수정: hub.py QueueFull + push_snapshot 시그니처 확장 + pending_codes() 노출
+- [ ] 06-02-PLAN.md — FastAPI 앱 확장: /ws WebSocket 엔드포인트 + StaticFiles + GET /
+- [ ] 06-03-PLAN.md — 대시보드 UI: index.html 단일 파일 (HTML + 인라인 CSS + 인라인 JS)
 **UI hint**: yes
 
 ### Phase 7: 봇 제어
@@ -100,7 +104,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
 | 3. Order Execution | v1.0 | 2/2 | Complete | 2026-04-08 |
 | 4. Notifications and Operational Polish | v1.0 | 2/2 | Complete | 2026-04-08 |
 | 5. Process Architecture Migration | v1.1 | 2/2 | Complete | 2026-04-12 |
-| 6. 모니터링 대시보드 | v1.1 | 0/? | Not started | - |
+| 6. 모니터링 대시보드 | v1.1 | 0/3 | Not started | - |
 | 7. 봇 제어 | v1.1 | 0/? | Not started | - |
 | 8. 거래 이력 | v1.1 | 0/? | Not started | - |
 | 9. Config 편집 | v1.1 | 0/? | Not started | - |
