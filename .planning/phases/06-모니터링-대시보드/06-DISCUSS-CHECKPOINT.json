@@ -1,0 +1,16 @@
+{
+  "phase": "6",
+  "phase_name": "모니터링 대시보드",
+  "timestamp": "2026-04-13T00:00:00.000Z",
+  "areas_completed": ["프론트엔드 구현 방식"],
+  "areas_remaining": ["대시보드 UI 스타일"],
+  "decisions": {
+    "프론트엔드 구현 방식": [
+      {"question": "대시보드 HTML/JS를 어떻게 제공할까요?", "answer": "Vanilla HTML + JS", "options_presented": ["Vanilla HTML + JS", "Alpine.js (CDN)", "Jinja2 템플릿 + 서버사이드 렌더링"]},
+      {"question": "WebSocket 연결이 끊어졌을 때 자동 재연결을 어떻게 처리할까요?", "answer": "자동 재연결", "options_presented": ["자동 재연결", "Disconnected 배너 표시", "Claude가 결정"]},
+      {"question": "에셋 파일 구조는 어떻게 할까요?", "answer": "단일 index.html", "options_presented": ["단일 index.html", "분리 파일 (HTML/CSS/JS)"]}
+    ]
+  },
+  "deferred_ideas": [],
+  "canonical_refs": [".planning/REQUIREMENTS.md", ".planning/ROADMAP.md"]
+}

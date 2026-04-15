@@ -17,3 +17,7 @@
   다음 단계: 
   /gsd:plan-phase 3
   Phase 3: Order Execution — 드라이런 → 실제 시장가 매도 주문 전환
+
+  #  맘대로 작업 진행
+  claude --dangerously-skip-permissions 
+  
