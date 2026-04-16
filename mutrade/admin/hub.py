@@ -28,20 +28,42 @@ class BotStateHub:
             self._loop = loop
             self._change_queue = asyncio.Queue(maxsize=1)
 
-    def push_snapshot(self, states: dict) -> None:
+    def push_snapshot(
+        self,
+        states: dict,
+        prices: "dict[str, float] | None" = None,
+        pending_codes: "frozenset[str] | None" = None,
+    ) -> None:
         """
         APScheduler 스레드에서 호출. engine.states 딕셔너리를 직렬화하여 저장.
         attach_loop()가 호출된 경우 asyncio.Queue에도 push.
-        states: engine.states (SymbolState dict 또는 이미 직렬화된 dict)
+
+        Args:
+            states: engine.states (SymbolState dict 또는 이미 직렬화된 dict)
+            prices: 종목별 현재가 dict (scheduler.py에서 전달, 없으면 None)
+            pending_codes: 현재 SELL_PENDING 중인 종목 코드 frozenset (없으면 None)
         """
-        # SymbolState dataclass → plain dict 직렬화 (Phase 6에서 필드 추가 가능)
+        _prices = prices or {}
+        _pending = pending_codes or frozenset()
+
+        # SymbolState dataclass → plain dict 직렬화
         serialized: dict = {}
         for code, s in states.items():
             if hasattr(s, '__dataclass_fields__') or hasattr(s, 'peak_price'):
+                peak = getattr(s, 'peak_price', 0.0)
+                current = _prices.get(code, 0.0)
+                # drop_pct: peak > 0 and current > 0 인 경우만 계산
+                if peak > 0 and current > 0:
+                    drop = round(((current - peak) / peak) * 100, 2)
+                else:
+                    drop = 0.0
                 serialized[code] = {
                     "code": getattr(s, 'code', code),
-                    "peak_price": getattr(s, 'peak_price', 0.0),
+                    "peak_price": peak,
                     "warm": getattr(s, 'warm', False),
+                    "current_price": current,
+                    "drop_pct": drop,
+                    "sell_pending": code in _pending,
                 }
             else:
                 serialized[code] = s  # 이미 dict인 경우
@@ -54,11 +76,28 @@ class BotStateHub:
         if self._loop is not None and self._change_queue is not None:
             try:
                 self._loop.call_soon_threadsafe(
-                    self._change_queue.put_nowait, dict(serialized)
+                    self._put_snapshot, dict(serialized)
                 )
             except RuntimeError:
                 # 루프가 닫힌 경우 (shutdown 중) — 무시
                 pass
+
+    def _put_snapshot(self, data: dict) -> None:
+        """asyncio 이벤트 루프 스레드에서 실행 (call_soon_threadsafe 경유).
+
+        INFRA-02: 큐가 full일 때 기존 항목을 드롭 후 새 항목 삽입.
+        QueueFull 예외는 무시 (극히 드문 경합 방어).
+        """
+        assert self._change_queue is not None
+        if self._change_queue.full():
+            try:
+                self._change_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                pass
+        try:
+            self._change_queue.put_nowait(data)
+        except asyncio.QueueFull:
+            pass
 
     def get_snapshot(self) -> dict:
         """asyncio 루프에서 호출. 최신 스냅샷의 복사본 반환."""

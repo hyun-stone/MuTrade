@@ -26,7 +26,10 @@ class TestBotStateHub:
         hub.push_snapshot(states)
 
     def test_push_snapshot_after_attach_loop_calls_call_soon_threadsafe(self):
-        """Test 2: attach_loop() 후 push_snapshot() 시 call_soon_threadsafe 호출 검증."""
+        """Test 2: attach_loop() 후 push_snapshot() 시 call_soon_threadsafe 호출 검증.
+
+        INFRA-02 이후: call_soon_threadsafe의 첫 번째 인자는 _put_snapshot bound method.
+        """
         hub = self._make_hub()
         mock_loop = MagicMock()
         hub.attach_loop(mock_loop)
@@ -37,8 +40,10 @@ class TestBotStateHub:
         # call_soon_threadsafe가 호출되었는지 검증
         mock_loop.call_soon_threadsafe.assert_called_once()
         call_args = mock_loop.call_soon_threadsafe.call_args
-        # 첫 번째 인자는 queue.put_nowait
-        assert call_args[0][0].__name__ == "put_nowait"
+        # 첫 번째 인자는 _put_snapshot bound method
+        first_arg = call_args[0][0]
+        assert callable(first_arg)
+        assert getattr(first_arg, '__name__', None) == '_put_snapshot'
 
     def test_get_snapshot_returns_last_pushed_value(self):
         """Test 3: get_snapshot()은 push_snapshot()이 마지막으로 전달한 dict의 복사본 반환."""
