@@ -102,13 +102,13 @@ class TestWebSocketEndpoint:
 
         hub = MagicMock(spec=BotStateHub)
         hub.get_snapshot.return_value = {"005930": {"code": "005930", "peak_price": 100.0}}
-        # wait_for_change는 절대 반환하지 않는 future (연결 끊기 전까지)
-        future = asyncio.Future()
 
-        async def never_return():
-            return await future
+        # wait_for_change: 첫 번째 호출에서 매우 긴 시간 대기 (연결 끊기 전까지)
+        async def long_wait():
+            await asyncio.sleep(60)
+            return {}
 
-        hub.wait_for_change = AsyncMock(side_effect=never_return)
+        hub.wait_for_change = long_wait
 
         import mutrade.admin.app as app_module
         with patch.object(app_module, "STATIC_DIR", static_dir, create=True):
@@ -162,7 +162,12 @@ class TestWebSocketEndpoint:
 
         hub = MagicMock(spec=BotStateHub)
         hub.get_snapshot.return_value = {}
-        hub.wait_for_change = AsyncMock(side_effect=asyncio.sleep(60))
+
+        async def long_wait():
+            await asyncio.sleep(60)
+            return {}
+
+        hub.wait_for_change = long_wait
 
         import mutrade.admin.app as app_module
         with patch.object(app_module, "STATIC_DIR", static_dir, create=True):
