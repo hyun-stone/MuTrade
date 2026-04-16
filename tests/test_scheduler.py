@@ -488,3 +488,91 @@ class TestHubIntegration:
         mock_poll.assert_not_called()
         # clear_stop이 호출되어야 함
         hub.clear_stop.assert_called_once()
+
+
+class TestSchedulerPhase6:
+    """Phase 6 — push_snapshot에 prices + pending_codes 전달 TDD 테스트."""
+
+    def _make_trading_session_mocks(self):
+        """거래일 1회 폴링 후 종료하는 mock 설정."""
+        trading_day_start = datetime(2026, 4, 7, 9, 0, 0, tzinfo=KST)
+        trading_day_end = datetime(2026, 4, 7, 9, 1, 0, tzinfo=KST)
+
+        config = make_config(
+            market_close_hour=9,
+            market_close_minute=1,
+        )
+
+        call_count = 0
+
+        def mock_now(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                return trading_day_start
+            return trading_day_end
+
+        return config, mock_now
+
+    def test_push_snapshot_receives_prices(self):
+        """INFRA-01: hub.push_snapshot() 호출 시 prices 인자가 전달되어야 한다."""
+        from mutrade.engine.models import SymbolState
+        kis = MagicMock()
+        config, mock_now = self._make_trading_session_mocks()
+        engine = make_engine_mock()
+        engine.states = {"005930": SymbolState(code="005930", peak_price=75000.0, warm=True)}
+        executor = make_executor_mock()
+        executor.pending_codes.return_value = frozenset()
+        hub = MagicMock()
+        hub.is_stop_requested.return_value = False
+
+        prices = {"005930": 75000.0}
+
+        with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=True), \
+             patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
+             patch("mutrade.monitor.scheduler.poll_prices", return_value=prices), \
+             patch("mutrade.monitor.scheduler.time"):
+            mock_dt.now.side_effect = mock_now
+            run_session = create_poll_session(kis, config, engine, executor, hub=hub)
+            run_session()
+
+        # push_snapshot이 prices를 두 번째 인자로 받아야 함
+        hub.push_snapshot.assert_called()
+        call_args = hub.push_snapshot.call_args
+        assert call_args[0][1] == prices or call_args[1].get('prices') == prices, (
+            f"prices가 push_snapshot에 전달되지 않음: {call_args}"
+        )
+
+    def test_push_snapshot_receives_pending_codes(self):
+        """INFRA-01: hub.push_snapshot() 호출 시 executor.pending_codes() 결과가 전달되어야 한다."""
+        from mutrade.engine.models import SymbolState
+        kis = MagicMock()
+        config, mock_now = self._make_trading_session_mocks()
+        engine = make_engine_mock()
+        engine.states = {"005930": SymbolState(code="005930", peak_price=75000.0, warm=True)}
+        executor = make_executor_mock()
+        pending = frozenset({"005930"})
+        executor.pending_codes.return_value = pending
+        hub = MagicMock()
+        hub.is_stop_requested.return_value = False
+
+        with patch("mutrade.monitor.scheduler.is_krx_trading_day", return_value=True), \
+             patch("mutrade.monitor.scheduler.datetime") as mock_dt, \
+             patch("mutrade.monitor.scheduler.poll_prices", return_value={"005930": 75000.0}), \
+             patch("mutrade.monitor.scheduler.time"):
+            mock_dt.now.side_effect = mock_now
+            run_session = create_poll_session(kis, config, engine, executor, hub=hub)
+            run_session()
+
+        # push_snapshot이 pending_codes를 세 번째 인자로 받아야 함
+        hub.push_snapshot.assert_called()
+        call_args = hub.push_snapshot.call_args
+        # positional 또는 keyword 인자로 전달 가능
+        positional = call_args[0]
+        keyword = call_args[1]
+        passed_pending = (
+            positional[2] if len(positional) > 2 else keyword.get('pending_codes')
+        )
+        assert passed_pending == pending, (
+            f"pending_codes가 push_snapshot에 전달되지 않음: {call_args}"
+        )

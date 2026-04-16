@@ -256,3 +256,47 @@ class TestNotifierIntegration:
         executor = OrderExecutor(kis)  # notifier 없음
         executor.execute(make_signal())
         acc.sell.assert_called_once()
+
+
+class TestOrderExecutorPhase6:
+    """Phase 6 — pending_codes() 공개 메서드 TDD 테스트."""
+
+    def test_pending_codes_method_exists(self):
+        """INFRA-01: OrderExecutor에 pending_codes() 메서드가 존재해야 한다."""
+        from mutrade.executor.order_executor import OrderExecutor
+        assert hasattr(OrderExecutor, 'pending_codes'), 'pending_codes 메서드 없음'
+
+    def test_pending_codes_returns_frozenset(self):
+        """INFRA-01: pending_codes()의 반환 타입이 frozenset이어야 한다."""
+        from unittest.mock import MagicMock
+        kis_mock = MagicMock()
+        ex = OrderExecutor(kis=kis_mock)
+        result = ex.pending_codes()
+        assert isinstance(result, frozenset), f'반환 타입 오류: {type(result)}'
+
+    def test_pending_codes_empty_when_no_pending(self):
+        """INFRA-01: _pending이 비어있을 때 pending_codes()가 frozenset()을 반환한다."""
+        from unittest.mock import MagicMock
+        kis_mock = MagicMock()
+        ex = OrderExecutor(kis=kis_mock)
+        assert ex.pending_codes() == frozenset()
+
+    def test_pending_codes_reflects_pending_set(self):
+        """INFRA-01: _pending에 코드가 있을 때 pending_codes()가 해당 frozenset을 반환한다."""
+        from unittest.mock import MagicMock
+        kis_mock = MagicMock()
+        ex = OrderExecutor(kis=kis_mock)
+        ex._pending.add('005930')
+        result = ex.pending_codes()
+        assert result == frozenset({'005930'}), f'wrong: {result}'
+
+    def test_pending_codes_returns_copy_not_reference(self):
+        """INFRA-01: pending_codes()가 내부 set의 복사본을 반환해야 한다 (참조 노출 방지)."""
+        from unittest.mock import MagicMock
+        kis_mock = MagicMock()
+        ex = OrderExecutor(kis=kis_mock)
+        ex._pending.add('005930')
+        result = ex.pending_codes()
+        # frozenset은 불변이므로 수정 불가 — 원본에 추가해도 이미 반환된 frozenset은 변경되지 않음
+        ex._pending.add('000660')
+        assert '000660' not in result, '이전에 반환된 frozenset이 변경되면 안 됨'
