@@ -52,7 +52,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full phase details.
   5. 페이지 새로고침 없이 WebSocket으로 데이터가 자동 갱신된다
 **Plans:** 3 plans
 Plans:
-- [ ] 06-01-PLAN.md — 인프라 버그 수정: hub.py QueueFull + push_snapshot 시그니처 확장 + pending_codes() 노출
+- [x] 06-01-PLAN.md — 인프라 버그 수정: hub.py QueueFull + push_snapshot 시그니처 확장 + pending_codes() 노출
 - [ ] 06-02-PLAN.md — FastAPI 앱 확장: /ws WebSocket 엔드포인트 + StaticFiles + GET /
 - [ ] 06-03-PLAN.md — 대시보드 UI: index.html 단일 파일 (HTML + 인라인 CSS + 인라인 JS)
 **UI hint**: yes
