@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MuTrade 모니터링</title>
+  <style>
+    * { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { background: #111827; color: #f9fafb; }
+
+    #header {
+      background: #1f2937;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #title { font-size: 20px; font-weight: 600; line-height: 1.2; }
+    #ws-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #9ca3af; }
+    #ws-dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; }
+    #ws-dot.connected { background: #3b82f6; }
+    #ws-dot.reconnecting { background: #f59e0b; }
+
+    #container { max-width: 800px; margin: 32px auto; padding: 0 24px; }
+
+    #symbol-table { width: 100%; border-collapse: collapse; background: #1f2937; table-layout: fixed; }
+    #symbol-table th, #symbol-table td {
+      padding: 8px 12px;
+      font-size: 14px;
+      border-bottom: 1px solid #374151;
+      text-align: right;
+    }
+    #symbol-table th { font-weight: 600; color: #9ca3af; line-height: 1.4; }
+    #symbol-table td { line-height: 1.5; }
+    #symbol-table td:first-child, #symbol-table th:first-child { text-align: left; width: 100px; }
+    #symbol-table th:nth-child(2), #symbol-table td:nth-child(2) { width: 120px; }
+    #symbol-table th:nth-child(3), #symbol-table td:nth-child(3) { width: 120px; }
+    #symbol-table th:nth-child(4), #symbol-table td:nth-child(4) { width: 100px; }
+    #symbol-table th:nth-child(5), #symbol-table td:nth-child(5) { width: 120px; text-align: center; }
+    #symbol-table tbody tr:hover { background: #374151; }
+
+    /* SELL_PENDING 번짙임 (D-05) */
+    @keyframes blink-sell {
+      0%, 100% { background-color: #450a0a; }
+      50%       { background-color: #7f1d1d; }
+    }
+    tr.sell-pending { animation: blink-sell 1s ease-in-out infinite; }
+    tr.sell-pending td { color: #fca5a5; }
+    tr.sell-pending .status-badge { color: #ef4444; font-weight: 600; }
+
+    /* 빈 상태 (D-06) */
+    #empty-state { text-align: center; padding: 48px 0; color: #9ca3af; }
+    #empty-main { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    #empty-sub { font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <!-- header bar -->
+  <div id="header">
+    <span id="title">MuTrade 모니터링</span>
+    <span id="ws-status">
+      <span id="ws-dot"></span>
+      <span id="ws-text">연결 중...</span>
+    </span>
+  </div>
+
+  <!-- main container -->
+  <div id="container">
+    <table id="symbol-table">
+      <thead>
+        <tr>
+          <th>종목코드</th>
+          <th>현재가</th>
+          <th>고점</th>
+          <th>하락률</th>
+          <th>상태</th>
+        </tr>
+      </thead>
+      <tbody id="symbol-table-body"></tbody>
+    </table>
+    <div id="empty-state" style="display:none">
+      <p id="empty-main">봇 대기 중</p>
+      <p id="empty-sub">장 운영 시간(09:00~15:30 KST)에 자동 시작됩니다</p>
+    </div>
+  </div>
+
+  <script>
+    let ws;
+
+    function getDropColor(dropPct) {
+      // UI-SPEC.md 하락률 숫자 색상
+      if (dropPct <= -9) return '#ef4444';
+      if (dropPct <= -5) return '#f59e0b';
+      return '#9ca3af';
+    }
+
+    function fmtPrice(v) {
+      // UI-SPEC.md: 84,500원 포맷
+      if (!v || v === 0) return '—';
+      return v.toLocaleString('ko-KR') + '원';
+    }
+
+    function fmtDrop(v, warm) {
+      // UI-SPEC.md: warm=false 시 '—', 그 외 -3.25% 포맷
+      if (!warm) return '—';
+      if (v === null || v === undefined) return '—';
+      return v.toFixed(2) + '%';
+    }
+
+    function getStatusText(sym) {
+      // UI-SPEC.md 상태 배지 텍스트 매핑
+      if (sym.sell_pending) return '매도 대기';
+      if (!sym.warm) return '워밍업';
+      return '모니터링 중';
+    }
+
+    function sanitizeCode(code) {
+      // T-06-08: KIS 종목코드(6자리 숫자)만 허용 — XSS innerHTML 삽입 방어
+      if (typeof code !== 'string') return '';
+      return code.replace(/[^0-9A-Za-z]/g, '');
+    }
+
+    function setStatus(state) {
+      // state: 'connected' | 'reconnecting' | 'disconnected'
+      var dot = document.getElementById('ws-dot');
+      var text = document.getElementById('ws-text');
+      dot.className = state === 'connected' ? 'connected' : (state === 'reconnecting' ? 'reconnecting' : '');
+      var labels = { connected: '실시간 연결', reconnecting: '재연결 중...', disconnected: '연결 끊김' };
+      text.textContent = labels[state] || '연결 중...';
+    }
+
+    function renderTable(data) {
+      var tbody = document.getElementById('symbol-table-body');
+      var emptyState = document.getElementById('empty-state');
+      var table = document.getElementById('symbol-table');
+      var keys = Object.keys(data);
+      if (keys.length === 0) {
+        tbody.innerHTML = '';
+        table.style.display = 'none';
+        emptyState.style.display = 'block';
+        return;
+      }
+      table.style.display = '';
+      emptyState.style.display = 'none';
+      tbody.innerHTML = keys.map(function(code) {
+        var sym = data[code];
+        var isPending = sym.sell_pending;
+        var dropColor = getDropColor(sym.drop_pct);
+        var safeCode = sanitizeCode(sym.code);
+        return '<tr class="' + (isPending ? 'sell-pending' : '') + '">' +
+          '<td>' + safeCode + '</td>' +
+          '<td>' + fmtPrice(sym.current_price) + '</td>' +
+          '<td>' + fmtPrice(sym.peak_price) + '</td>' +
+          '<td style="color:' + dropColor + '">' + fmtDrop(sym.drop_pct, sym.warm) + '</td>' +
+          '<td><span class="status-badge">' + getStatusText(sym) + '</span></td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    function connect() {
+      // D-03: setTimeout 자동 재연결
+      ws = new WebSocket('ws://' + location.host + '/ws');
+      ws.onopen = function() { setStatus('connected'); };
+      ws.onmessage = function(e) {
+        try { renderTable(JSON.parse(e.data)); } catch(err) { console.error('parse error', err); }
+      };
+      ws.onclose = function() { setStatus('reconnecting'); setTimeout(connect, 3000); };
+      ws.onerror = function() { ws.close(); };
+    }
+
+    connect();
+  </script>
+</body>
+</html>
