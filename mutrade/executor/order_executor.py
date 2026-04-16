@@ -69,6 +69,10 @@ class OrderExecutor:
             logger.error("주문 실패 {}: {}", signal.code, e)
             self._pending.discard(signal.code)
 
+    def pending_codes(self) -> frozenset:
+        """현재 SELL_PENDING 중인 종목 코드 집합. 스레드 안전 복사본."""
+        return frozenset(self._pending)
+
     def _submit_order(self, signal: SellSignal) -> None:
         """잔고 조회 → 시장가 매도 주문 → 체결 확인.
 
