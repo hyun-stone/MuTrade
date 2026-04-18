@@ -120,8 +120,11 @@ def create_app(hub: BotStateHub, **kwargs: Any) -> FastAPI:
         engine = request.app.state.engine
         executor = request.app.state.executor
 
+        if engine is None or executor is None:
+            raise HTTPException(status_code=503, detail="봇이 초기화되지 않았습니다 (engine/executor 없음)")
+
         with _hub._lock:
-            new_val = not engine._dry_run
+            new_val = not bool(engine._dry_run)
             engine._dry_run = new_val
             executor._dry_run = new_val
 

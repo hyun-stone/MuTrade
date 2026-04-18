@@ -221,10 +221,12 @@
 
     function toggleDryRun() {
       fetch('/api/toggle-dry-run', {method: 'POST'})
-        .then(function(r) { return r.json(); })
-        .then(function(body) {
-          if (body.ok) showBanner(body.message, 'success');
-          else showBanner(body.message || '토글 실패', 'error');
+        .then(function(r) {
+          return r.json().then(function(body) { return {ok: r.ok, body: body}; });
+        })
+        .then(function(res) {
+          if (res.ok && res.body.ok) showBanner(res.body.message, 'success');
+          else showBanner(res.body.detail || res.body.message || '토글 실패', 'error');
         })
         .catch(function(e) { showBanner('요청 실패: ' + e, 'error'); });
     }
