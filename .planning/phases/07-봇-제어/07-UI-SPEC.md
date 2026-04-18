@@ -1,7 +1,8 @@
 ---
 phase: 7
 slug: 봇-제어
-status: draft
+status: approved
+reviewed_at: 2026-04-18
 shadcn_initialized: false
 preset: none
 created: 2026-04-18
