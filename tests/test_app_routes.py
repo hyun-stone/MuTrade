@@ -10,6 +10,7 @@ Wave 2 TDD RED 테스트:
 - WebSocketDisconnect 시 오류 없이 종료
 """
 import asyncio
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -179,3 +180,123 @@ class TestWebSocketEndpoint:
                 ws.receive_json()  # 초기 스냅샷 수신
                 # 연결 종료 (컨텍스트 매니저 exit)
         # 예외 없이 통과하면 PASS
+
+
+# ── Phase 7 제어 엔드포인트 테스트 픽스처 ──────────────────────────────────────
+
+@pytest.fixture
+def mock_scheduler():
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_engine():
+    engine = MagicMock()
+    engine._dry_run = True
+    return engine
+
+
+@pytest.fixture
+def mock_executor():
+    executor = MagicMock()
+    executor._dry_run = True
+    executor.execute = MagicMock()
+    return executor
+
+
+@pytest.fixture
+def app_with_ctrl(hub, tmp_path, mock_scheduler, mock_engine, mock_executor):
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    (static_dir / "index.html").write_text("<html/>")
+
+    import mutrade.admin.app as app_module
+    with patch.object(app_module, "STATIC_DIR", static_dir, create=True):
+        _app = create_app(
+            hub,
+            scheduler=mock_scheduler,
+            engine=mock_engine,
+            executor=mock_executor,
+        )
+    return _app
+
+
+class TestControlRoutes:
+    """Phase 7 봇 제어 API 엔드포인트 테스트."""
+
+    def test_start_ok(self, app_with_ctrl, hub, mock_scheduler):
+        """POST /api/start — 시장 시간 내, 미실행 상태 → 200 OK, modify_job 호출."""
+        from zoneinfo import ZoneInfo
+        hub.set_running(False)
+        market_open_dt = datetime(2026, 4, 18, 10, 0, tzinfo=ZoneInfo("Asia/Seoul"))
+
+        import mutrade.admin.app as app_module
+        with TestClient(app_with_ctrl) as client:
+            with patch.object(app_module, "datetime") as mock_dt:
+                mock_dt.now.side_effect = lambda tz=None: market_open_dt if tz is not None and str(tz) == "Asia/Seoul" else datetime(2026, 4, 18, 1, 0, tzinfo=ZoneInfo("UTC"))
+                mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+                resp = client.post("/api/start")
+        assert resp.status_code == 200, resp.text
+        mock_scheduler.modify_job.assert_called_once()
+
+    def test_start_409(self, app_with_ctrl, hub):
+        """POST /api/start — 이미 실행 중이면 409."""
+        hub.set_running(True)
+        with TestClient(app_with_ctrl) as client:
+            resp = client.post("/api/start")
+        assert resp.status_code == 409
+
+    def test_start_market_closed(self, app_with_ctrl, hub):
+        """POST /api/start — 시장 외 시간(20:00) → 400, 시장 시간 메시지 포함."""
+        from zoneinfo import ZoneInfo
+        hub.set_running(False)
+        market_closed_dt = datetime(2026, 4, 18, 20, 0, tzinfo=ZoneInfo("Asia/Seoul"))
+
+        import mutrade.admin.app as app_module
+        with TestClient(app_with_ctrl) as client:
+            with patch.object(app_module, "datetime") as mock_dt:
+                mock_dt.now.side_effect = lambda tz=None: market_closed_dt
+                mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+                resp = client.post("/api/start")
+        assert resp.status_code == 400
+        assert "시장 시간이 아닙니다" in resp.json()["detail"]
+
+    def test_stop_ok(self, app_with_ctrl, hub):
+        """POST /api/stop → 200, hub.is_stop_requested() True."""
+        with TestClient(app_with_ctrl) as client:
+            resp = client.post("/api/stop")
+        assert resp.status_code == 200
+        assert hub.is_stop_requested() is True
+
+    def test_toggle_dry_run(self, app_with_ctrl, mock_engine, mock_executor):
+        """POST /api/toggle-dry-run — dry_run True→False, 엔진/실행기 모두 반전."""
+        mock_engine._dry_run = True
+        mock_executor._dry_run = True
+        with TestClient(app_with_ctrl) as client:
+            resp = client.post("/api/toggle-dry-run")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["dry_run"] is False
+        assert mock_engine._dry_run is False
+        assert mock_executor._dry_run is False
+
+    def test_sell_ok(self, app_with_ctrl, hub, mock_executor):
+        """POST /api/sell/005930 — 스냅샷에 종목 있으면 200, execute 호출, dry_run=False."""
+        from mutrade.engine.models import SymbolState
+        # hub에 종목 스냅샷 push
+        hub.push_snapshot(
+            {"005930": SymbolState(code="005930", peak_price=86200.0, warm=True)},
+            prices={"005930": 84500.0},
+        )
+        with TestClient(app_with_ctrl) as client:
+            resp = client.post("/api/sell/005930")
+        assert resp.status_code == 200, resp.text
+        mock_executor.execute.assert_called_once()
+        signal = mock_executor.execute.call_args[0][0]
+        assert signal.dry_run is False
+
+    def test_sell_404(self, app_with_ctrl):
+        """POST /api/sell/999999 — 스냅샷에 없는 종목 → 404."""
+        with TestClient(app_with_ctrl) as client:
+            resp = client.post("/api/sell/999999")
+        assert resp.status_code == 404
