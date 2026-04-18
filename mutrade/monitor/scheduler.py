@@ -113,7 +113,7 @@ def create_poll_session(
 
             # hub 연동: 최신 상태 스냅샷 전달 및 실행 중 플래그 설정
             if hub is not None:
-                hub.push_snapshot(engine.states, prices, executor.pending_codes())
+                hub.push_snapshot(engine.states, prices, executor.pending_codes(), dry_run=engine._dry_run)
                 hub.set_running(True)
 
             logger.info(

@@ -283,3 +283,52 @@ class TestBotStateHubPhase6:
         assert hasattr(first_arg, '__func__') or hasattr(first_arg, '__self__'), (
             f"bound method여야 함: {first_arg}"
         )
+
+
+class TestBotStateHubPhase7:
+    """Phase 7 — push_snapshot dry_run 인자 및 _meta 최상위 필드 TDD 테스트."""
+
+    def _make_hub(self):
+        from mutrade.admin.hub import BotStateHub
+        return BotStateHub()
+
+    def _make_states(self):
+        from mutrade.engine.models import SymbolState
+        return {"005930": SymbolState(code="005930", peak_price=86200.0, warm=True)}
+
+    def test_push_snapshot_with_dry_run_true(self):
+        """dry_run=True 로 push_snapshot() 호출 시 _meta.dry_run이 True."""
+        hub = self._make_hub()
+        states = self._make_states()
+        hub.push_snapshot(states, dry_run=True)
+        snap = hub.get_snapshot()
+        assert "_meta" in snap, f"_meta 키 없음: {snap}"
+        assert snap["_meta"]["dry_run"] is True, f"dry_run 불일치: {snap['_meta']}"
+
+    def test_push_snapshot_with_dry_run_false(self):
+        """dry_run=False 로 push_snapshot() 호출 시 _meta.dry_run이 False."""
+        hub = self._make_hub()
+        states = self._make_states()
+        hub.push_snapshot(states, dry_run=False)
+        snap = hub.get_snapshot()
+        assert "_meta" in snap, f"_meta 키 없음: {snap}"
+        assert snap["_meta"]["dry_run"] is False, f"dry_run 불일치: {snap['_meta']}"
+
+    def test_push_snapshot_dry_run_default_false(self):
+        """dry_run 인자 없이 push_snapshot() 호출 시 _meta.dry_run이 False (하위 호환)."""
+        hub = self._make_hub()
+        states = self._make_states()
+        hub.push_snapshot(states)  # dry_run 생략
+        snap = hub.get_snapshot()
+        assert "_meta" in snap, f"_meta 키 없음: {snap}"
+        assert snap["_meta"]["dry_run"] is False, f"기본값 False 기대: {snap['_meta']}"
+
+    def test_meta_contains_is_running(self):
+        """set_running(True) 후 push_snapshot() 시 _meta.is_running이 True."""
+        hub = self._make_hub()
+        hub.set_running(True)
+        states = self._make_states()
+        hub.push_snapshot(states)
+        snap = hub.get_snapshot()
+        assert "_meta" in snap, f"_meta 키 없음: {snap}"
+        assert snap["_meta"]["is_running"] is True, f"is_running 불일치: {snap['_meta']}"

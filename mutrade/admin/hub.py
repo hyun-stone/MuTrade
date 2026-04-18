@@ -33,6 +33,7 @@ class BotStateHub:
         states: dict,
         prices: "dict[str, float] | None" = None,
         pending_codes: "frozenset[str] | None" = None,
+        dry_run: bool = False,
     ) -> None:
         """
         APScheduler 스레드에서 호출. engine.states 딕셔너리를 직렬화하여 저장.
@@ -42,6 +43,7 @@ class BotStateHub:
             states: engine.states (SymbolState dict 또는 이미 직렬화된 dict)
             prices: 종목별 현재가 dict (scheduler.py에서 전달, 없으면 None)
             pending_codes: 현재 SELL_PENDING 중인 종목 코드 frozenset (없으면 None)
+            dry_run: 현재 드라이런 모드 여부 (_meta 필드로 스냅샷에 포함)
         """
         _prices = prices or {}
         _pending = pending_codes or frozenset()
@@ -68,15 +70,22 @@ class BotStateHub:
             else:
                 serialized[code] = s  # 이미 dict인 경우
 
+        meta = {
+            "_meta": {
+                "is_running": self._is_running,
+                "dry_run": dry_run,
+            }
+        }
+
         with self._lock:
-            self._snapshot = serialized
+            self._snapshot = {**meta, **serialized}
 
         # asyncio.Queue에 삽입 (loop가 연결된 경우만)
         # call_soon_threadsafe: 스레드 안전 — asyncio 이벤트 루프 스레드에서 실행됨
         if self._loop is not None and self._change_queue is not None:
             try:
                 self._loop.call_soon_threadsafe(
-                    self._put_snapshot, dict(serialized)
+                    self._put_snapshot, {**meta, **serialized}
                 )
             except RuntimeError:
                 # 루프가 닫힌 경우 (shutdown 중) — 무시
