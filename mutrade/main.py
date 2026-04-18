@@ -109,7 +109,7 @@ def main() -> None:
     scheduler = start_scheduler(kis, config, engine, executor, hub=hub)
 
     # FastAPI 앱 생성 (hub, scheduler 주입 — Phase 6~7에서 라우트 추가)
-    app = create_app(hub=hub, scheduler=scheduler, engine=engine, config=config)
+    app = create_app(hub=hub, scheduler=scheduler, engine=engine, executor=executor, config=config)
 
     # uvicorn이 메인 스레드 담당 (블로킹 — 프로세스 종료까지 실행)
     logger.info("Starting uvicorn on http://127.0.0.1:8000 ...")
